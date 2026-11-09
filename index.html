@@ -14,6 +14,7 @@
     --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s7: #6250d6;
     --good: #006300; --bad: #d03b3b; --on-accent: #fff;
     --radius: 12px;
+    --st-good: #0ca30c; --st-warn: #fab219; --st-bad: #d03b3b; --st-bad2: #9c1f1f; --st-bad3: #6b1111;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
@@ -45,19 +46,48 @@
   .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 6px; cursor: pointer; }
   .seg button[aria-pressed="true"] { background: var(--s1); color: var(--on-accent); }
   input[type=number] { width: 84px; font: inherit; font-size: 13px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 4px 8px; }
-  .tabs { display: flex; flex-wrap: wrap; gap: 2px 18px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
-  .tabs button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; padding: 8px 0; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-  .tabs button[aria-selected="true"] { color: var(--fg); font-weight: 600; border-bottom-color: var(--s1); }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+  .tabs button { border: 1px solid var(--line); background: var(--panel); color: var(--muted); font: inherit; font-size: 13.5px; padding: 7px 14px; border-radius: 99px; cursor: pointer; }
+  .tabs button:hover { color: var(--fg); }
+  .tabs button[aria-selected="true"] { color: var(--on-accent); background: var(--s1); border-color: var(--s1); font-weight: 600; }
   .filters { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin: 22px 0 10px; }
   .filters h2.section { margin: 0; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
   .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 128px), 1fr)); gap: 10px; }
+  .tile { display: flex; flex-direction: column; border-top: 3px solid var(--line); transition: transform .15s ease, box-shadow .15s ease; }
+  .tile:hover, .chart-card:hover, .band-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.14); }
+  .chart-card, .band-card { transition: transform .15s ease, box-shadow .15s ease; }
+  .tile-icon { margin-right: 5px; }
+  .spark { display: block; width: 100%; height: 28px; margin: 6px 0 2px; }
+  .chip { display: inline-flex; align-self: flex-start; align-items: center; gap: 4px; font-size: 11.5px; padding: 2px 7px; border-radius: 99px; margin-top: 4px; }
+  .chip i { font-style: normal; font-size: 10px; }
+  .chip.good { background: rgba(12,163,12,.16); } .chip.warn { background: rgba(250,178,25,.2); } .chip.bad { background: rgba(208,59,59,.17); }
+  #hero { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: center; justify-content: space-between; padding: 20px 22px; margin-bottom: 18px;
+    border-radius: 16px; border: 1px solid var(--line); background: linear-gradient(120deg, rgba(42,120,214,.20), rgba(27,175,122,.14) 60%, rgba(98,80,214,.14)); }
+  .hero-goal { flex: 1 1 320px; min-width: 0; }
+  .hero-kicker { font-size: 12.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .hero-big { font-size: 38px; font-weight: 700; letter-spacing: -.02em; margin: 2px 0 8px; }
+  .hero-big small { font-size: 15px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+  .hero-bar { height: 10px; border-radius: 99px; background: var(--grid); overflow: hidden; }
+  .hero-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--s1), var(--s3)); }
+  .hero-ends { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .hero-note { font-size: 13px; margin-top: 8px; }
+  .hero-rings { display: flex; gap: 8px 14px; flex: 0 1 320px; }
+  .ring { display: flex; flex-direction: column; align-items: center; flex: 1 1 0; min-width: 0; text-align: center; }
+  .ring svg { width: 76px; height: 76px; }
+  .ring-text b { display: block; font-size: 14px; font-weight: 650; }
+  .ring-text span { font-size: 11.5px; color: var(--muted); }
+  .band-card { display: flex; flex-direction: column; }
   .tile .label { font-size: 12.5px; color: var(--muted); }
   .tile .value { font-size: 25px; font-weight: 650; letter-spacing: -.02em; margin-top: 2px; white-space: nowrap; }
   .tile .value small { font-size: 12.5px; font-weight: 500; color: var(--muted); margin-left: 3px; letter-spacing: 0; }
   .tile .note { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .tile .status, .band-card .status { margin-top: auto; padding-top: 8px; }
   .tile.none .value { color: var(--axis); font-size: 15px; font-weight: 500; letter-spacing: 0; padding: 7px 0 5px; }
   .good { color: var(--good); } .bad { color: var(--bad); }
+  .status { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; }
+  .status i { font-style: normal; font-size: 11px; }
+  .zone-line { margin-top: -6px !important; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 10px; }
   .chart-card h3 { font-size: 14px; font-weight: 600; margin: 0; }
   .chart-card .desc { font-size: 12.5px; color: var(--muted); margin: 1px 0 8px; }
@@ -90,7 +120,7 @@
   .stack { position: relative; display: flex; gap: 2px; height: 16px; margin-bottom: 10px; }
   .stack i { display: block; min-width: 3px; height: 100%; }
   .stack i:first-child { border-radius: 4px 0 0 4px; } .stack i:last-child { border-radius: 0 4px 4px 0; } .stack i:only-child { border-radius: 4px; }
-  .band-row { display: grid; grid-template-columns: 12px 1fr auto 44px; gap: 8px; align-items: center; font-size: 13px; padding: 3px 0; font-variant-numeric: tabular-nums; }
+  .band-row { display: grid; grid-template-columns: 12px 1fr auto 40px; gap: 8px; align-items: center; font-size: 13px; padding: 3px 0; font-variant-numeric: tabular-nums; }
   .band-row .sw { width: 10px; height: 10px; border-radius: 3px; }
   .band-row .pct { color: var(--muted); text-align: right; }
   .ramp-key { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); margin-bottom: 12px; }
@@ -159,6 +189,7 @@
   </nav>
 
   <section id="tab-daily" hidden>
+    <div id="hero"></div>
     <h2 class="section" id="ytdTitle" style="margin-top:0">Year to date</h2>
     <div class="tiles" id="ytdTiles"></div>
     <h2 class="section" id="mtdTitle">Month to date</h2>
@@ -169,12 +200,16 @@
       <div class="controls">
         <label>Step goal <input type="number" id="goal" min="1000" step="500" value="8000"></label>
         <div class="seg" id="range" role="group" aria-label="Date range">
+          <button data-range="7">7D</button>
+          <button data-range="14">14D</button>
           <button data-range="30">30D</button>
           <button data-range="90">90D</button>
-          <button data-range="ytd">This year</button>
+          <button data-range="180">180D</button>
+          <button data-range="365">1Y</button>
         </div>
       </div>
     </div>
+    <div class="key" id="zoneKey" style="margin:0 0 10px"></div>
     <div class="grid" id="charts"></div>
 
     <h2 class="section">Recent workouts</h2>
@@ -191,6 +226,7 @@
   <section id="tab-bands" hidden>
     <div class="sub" style="margin-bottom:8px">Days spent in each 1 kg band, month by month.</div>
     <div class="ramp-key"><span id="rampLo"></span><i id="rampBar"></i><span id="rampHi"></span></div>
+    <div class="key" id="bandKey" style="margin:0 0 12px"></div>
     <div class="bands" id="bandCards"></div>
   </section>
 
@@ -291,6 +327,9 @@
         boneKg: n(hw.boneKg),
         bmr: n(hw.bmr),
         vo2: n(t["gh-vo2"]?.value) ?? n(t["hs-vo2max"]?.value),
+        // A daily total under 1,200 kcal is a partly recorded day, not a real burn (seen early in 2026)
+        totalKcal: n(t["total-calories"]?.kcalSum) >= 1200 ? n(t["total-calories"]?.kcalSum) : null,
+        activeKcal: n(t["active-energy-burned"]?.kcalSum),
         sleepH: sleep?.minutes ? sleep.minutes / 60 : null,
         stages: sleep?.stages || null,
       };
@@ -304,18 +343,17 @@
     }
     for (const [day, a] of Object.entries(walks)) (out[day] ||= { date: day }).walkHr = a.beats / a.secs;
 
-    // No scale BMR at all: estimate it with Mifflin-St Jeor from the encrypted profile
-    const p = data.profile;
-    bmrEstimated = false;
-    if (p?.heightCm && p?.birthDate && p?.sex && !Object.values(out).some((r) => r.bmr != null)) {
+    // Resting calories: Google's total minus active, then the scale, then Mifflin-St Jeor
+    const p = data.profile, today = ymd(new Date());
+    for (const r of Object.values(out)) {
+      if (r.totalKcal != null) r.baseKcal = r.totalKcal - (r.activeKcal || 0);   // chart base, even with no active figure
+      if (r.totalKcal != null && r.activeKcal != null) r.restKcal = r.totalKcal - r.activeKcal;
+      if (r.restKcal != null && r.date !== today) { r.bmr = r.restKcal; continue; }
+      if (r.bmr != null || r.weight == null || !p?.heightCm || !p?.birthDate || !p?.sex) continue;
       const [by, bm, bd] = p.birthDate.split("-").map(Number);
-      for (const r of Object.values(out)) {
-        if (r.weight == null) continue;
-        const [y, m, d] = r.date.split("-").map(Number);
-        const age = y - by - (m < bm || (m === bm && d < bd) ? 1 : 0);
-        r.bmr = 10 * r.weight + 6.25 * p.heightCm - 5 * age + (p.sex === "M" ? 5 : -161);
-        bmrEstimated = true;
-      }
+      const [y, m, d] = r.date.split("-").map(Number);
+      const age = y - by - (m < bm || (m === bm && d < bd) ? 1 : 0);
+      r.bmr = 10 * r.weight + 6.25 * p.heightCm - 5 * age + (p.sex === "M" ? 5 : -161);
     }
     return out;
   }
@@ -336,9 +374,9 @@
   }
 
   // ---------- state
-  let payload = null, rows = {}, allRows = [], bmrEstimated = false;
-  const savedRange = store.get("hd-range2");
-  let range = savedRange === "30" || savedRange === "90" ? Number(savedRange) : "ytd";
+  let payload = null, rows = {}, allRows = [];
+  const savedRange = Number(store.get("hd-range3"));
+  let range = [7, 14, 30, 90, 180, 365].includes(savedRange) ? savedRange : 90;
   let goal = Number(store.get("hd-goal")) || 8000;
   let heightCm = Number(store.get("hd-height")) || null;
   let tab = store.get("hd-tab") || "daily";
@@ -412,7 +450,7 @@
 
   function daySeries() {
     const today = new Date();
-    const start = range === "ytd" ? new Date(today.getFullYear(), 0, 1, 12) : addDays(today, -(range - 1));
+    const start = addDays(today, -(range - 1));
     const out = [];
     for (let d = new Date(start); ymd(d) <= ymd(today); d = addDays(d, 1)) {
       const k = ymd(d);
@@ -422,28 +460,123 @@
   }
   const withBmi = (r) => (heightCm && r.weight != null ? { ...r, bmi: r.weight / (heightCm / 100) ** 2 } : r);
 
+  // ---------- safe / neutral / danger zones. General guides based on height, age and sex.
+  const STATUS = {
+    good: { label: "Safe", icon: "✓", color: "--st-good" },
+    warn: { label: "Neutral", icon: "■", color: "--st-warn" },
+    bad: { label: "Danger", icon: "▲", color: "--st-bad" },
+  };
+  function zonesFor(key) {
+    const prof = payload?.profile, male = prof?.sex === "M";
+    const h2 = heightCm ? (heightCm / 100) ** 2 : null;
+    let age = null;
+    if (prof?.birthDate) {
+      const [by, bm, bd] = prof.birthDate.split("-").map(Number), now = new Date();
+      age = now.getFullYear() - by - (now.getMonth() + 1 < bm || (now.getMonth() + 1 === bm && now.getDate() < bd) ? 1 : 0);
+    }
+    const z = (...pairs) => pairs.map(([to, s]) => ({ to, s }));
+    const INF = Infinity;
+    switch (key) {
+      case "bmi": return z([18.5, "bad"], [25, "good"], [30, "warn"], [INF, "bad"]);                 // WHO
+      case "weight": return h2 && z([18.5 * h2, "bad"], [25 * h2, "good"], [30 * h2, "warn"], [INF, "bad"]); // WHO BMI x height
+      case "bodyFat": return male ? z([8, "bad"], [20, "good"], [25, "warn"], [INF, "bad"]) : null;  // Gallagher 2000, men 20-39
+      case "fatKg": return h2 && male ? z([3 * h2, "warn"], [6 * h2, "good"], [9 * h2, "warn"], [INF, "bad"]) : null; // fat mass index, Kelly 2009
+      case "leanKg": return h2 && male ? z([17 * h2, "bad"], [18 * h2, "warn"], [INF, "good"]) : null; // fat-free mass index
+      case "rhr": return z([40, "bad"], [50, "warn"], [80, "good"], [100, "warn"], [INF, "bad"]);
+      case "vo2":
+        if (!male || age == null || age >= 50) return null;                                           // Heyward fitness norms for men
+        return age < 40 ? z([35.5, "bad"], [41, "warn"], [INF, "good"]) : z([33.6, "bad"], [39, "warn"], [INF, "good"]);
+      case "sleepH": return z([6, "bad"], [7, "warn"], [9, "good"], [10, "warn"], [INF, "bad"]);     // National Sleep Foundation
+      case "steps": return z([5000, "bad"], [8000, "warn"], [INF, "good"]);
+      case "walkHr": {                                                                                 // share of 220 - age
+        if (age == null) return null;
+        const m = 220 - age;
+        return z([0.5 * m, "warn"], [0.7 * m, "good"], [0.85 * m, "warn"], [INF, "bad"]);
+      }
+      case "activeKcal": return z([150, "bad"], [300, "warn"], [INF, "good"]);
+      default: return null;
+    }
+  }
+  const zoneOf = (zones, v) => (zones && v != null ? zones.find((b) => v < b.to)?.s : null);
+  const zoneColor = (zones, v) => { const s = zoneOf(zones, v); return s ? css(STATUS[s].color) : null; };
+  function statusEl(zones, v) {
+    const s = zoneOf(zones, v);
+    if (!s) return null;
+    const e = make("div", "status"), i = make("i", null, STATUS[s].icon);
+    i.style.color = `var(${STATUS[s].color})`;
+    e.append(i, STATUS[s].label);
+    return e;
+  }
+  function zoneText(zones, digits, unit) {
+    if (!zones) return "";
+    const f = (v) => fmtN(v, digits);
+    const parts = zones.map((b, i) => {
+      const lo = zones[i - 1]?.to, name = STATUS[b.s].label;
+      if (lo == null) return `${name} under ${f(b.to)}`;
+      return b.to === Infinity ? `${name} ${f(lo)}+` : `${name} ${f(lo)}–${f(b.to)}`;
+    });
+    return `${parts.join(" · ")}${unit ? " " + unit : ""}`;
+  }
+  function renderZoneKey() {
+    const key = $("zoneKey"); key.replaceChildren();
+    for (const s of ["good", "warn", "bad"]) {
+      const e = make("span"), i = make("i"); i.style.background = `var(${STATUS[s].color})`;
+      e.append(i, STATUS[s].label); key.append(e);
+    }
+    key.append(make("span", null, "General guides for your height, age and sex, not medical advice."));
+  }
+
   // ---------- Daily Health tab
   const METRICS = [
-    { key: "weight", label: "Weight", unit: "kg", digits: 1, better: "down" },
-    { key: "rhr", label: "Resting HR", unit: "bpm", digits: 0, better: "down", flag: "Likely high" },
-    { key: "steps", label: "Daily steps", unit: "", digits: 0, better: "up", skipToday: true },
-    { key: "vo2", label: "VO₂ max", unit: "", digits: 1, better: "up" },
-    { key: "walkHr", label: "Walking HR", unit: "bpm", digits: 0, better: "down" },
-    { key: "sleepH", label: "Sleep", unit: "h", digits: 1, better: "up" },
-    { key: "hrv", label: "HRV", none: true },
+    { key: "weight", label: "Weight", icon: "⚖️", unit: "kg", digits: 1, better: "down" },
+    { key: "rhr", label: "Resting HR", icon: "❤️", unit: "bpm", digits: 0, better: "down", flag: "Likely high" },
+    { key: "steps", label: "Daily steps", icon: "👟", unit: "", digits: 0, better: "up", skipToday: true },
+    { key: "vo2", label: "VO₂ max", icon: "🫁", unit: "", digits: 1, better: "up" },
+    { key: "walkHr", label: "Walking HR", icon: "🚶", unit: "bpm", digits: 0, better: "down" },
+    { key: "totalKcal", label: "Total burn", icon: "🔥", unit: "kcal", digits: 0, skipToday: true },
+    { key: "activeKcal", label: "Active burn", icon: "⚡", unit: "kcal", digits: 0, better: "up", skipToday: true },
+    { key: "sleepH", label: "Sleep", icon: "😴", unit: "h", digits: 1, better: "up" },
   ];
   const stat = (list, m) => {
     const vals = list.filter((r) => r[m.key] != null && !(m.skipToday && r.date === todayStr())).map((r) => r[m.key]);
     return { v: avg(vals), count: vals.length };
   };
-  function tile(label, value, unit, note, noteClass, none) {
-    const c = make("div", "card tile" + (none ? " none" : ""));
-    c.append(make("div", "label", label));
+  function spark(key, skipToday) {
+    const today = todayStr();
+    const vals = allRows.filter((r) => r[key] != null && !(skipToday && r.date === today)).slice(-30).map((r) => r[key]);
+    if (vals.length < 2) return null;
+    const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+    const svg = document.createElementNS(SVG, "svg");
+    svg.setAttribute("viewBox", "0 0 100 28"); svg.setAttribute("preserveAspectRatio", "none"); svg.setAttribute("class", "spark");
+    const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * 100},${25 - ((v - lo) / span) * 22}`).join(" ");
+    el("polygon", { points: `0,28 ${pts} 100,28`, fill: css("--s1"), opacity: 0.12 }, svg);
+    el("polyline", { points: pts, fill: "none", stroke: css("--s1"), "stroke-width": 1.5, "vector-effect": "non-scaling-stroke" }, svg);
+    return svg;
+  }
+  function tile(m, value, note, chip, status, zone) {
+    const c = make("div", "card tile");
+    if (zone) c.style.borderTopColor = `var(${STATUS[zone].color})`;
+    const lab = make("div", "label");
+    if (m.icon) lab.append(make("span", "tile-icon", m.icon));
+    lab.append(m.label);
+    c.append(lab);
     const v = make("div", "value", value);
-    if (unit) v.append(make("small", null, unit));
+    if (m.unit) v.append(make("small", null, m.unit));
     c.append(v);
-    if (note) c.append(make("div", "note" + (noteClass ? " " + noteClass : ""), note));
+    const sp = m.key ? spark(m.key, m.skipToday) : null;
+    if (sp) c.append(sp);
+    if (note) c.append(make("div", "note", note));
+    if (chip) c.append(chip);
+    if (status) c.append(status);
     return c;
+  }
+  function deltaChip(m, cur, base) {
+    const pct = ((cur - base) / base) * 100, near = Math.abs(pct) < 1;
+    const s = near || !m.better ? "warn" : (pct > 0) === (m.better === "up") ? "good" : "bad";
+    const chip = make("div", "chip " + s), i = make("i", null, near ? "■" : pct > 0 ? "▲" : "▼");
+    i.style.color = `var(${STATUS[s].color})`;
+    chip.append(i, near ? "Level with YTD avg" : `${fmt1.format(Math.abs(pct))}% vs YTD avg`);
+    return chip;
   }
   const countNote = (count) => (count === 1 ? "1 reading" : `${count} days`);
 
@@ -455,30 +588,67 @@
     const yBox = $("ytdTiles"), mBox = $("mtdTiles");
     yBox.replaceChildren(); mBox.replaceChildren();
     for (const m of METRICS) {
-      if (m.none) {
-        yBox.append(tile(m.label, "No data", "", "Not recorded yet", "", true));
-        mBox.append(tile(m.label, "No data", "", "Not recorded yet", "", true));
-        continue;
-      }
-      const y = stat(ytd, m), c = stat(mtd, m);
-      const yNote = y.v == null ? "Not recorded yet" : m.flag ? `${m.flag} · ${countNote(y.count)}` : countNote(y.count);
-      yBox.append(y.v == null ? tile(m.label, "No data", "", yNote, "", true)
-        : tile(m.label, fmtN(y.v, m.digits), m.unit, yNote));
-      if (c.v == null) { mBox.append(tile(m.label, "No data", "", "None this month", "", true)); continue; }
-      let note = "No year average", cls = "";
+      const y = stat(ytd, m), c = stat(mtd, m), zones = zonesFor(m.key);
       if (y.v != null) {
-        const pct = ((c.v - y.v) / y.v) * 100;
-        if (Math.abs(pct) < 0.05) note = "Level with YTD avg";
-        else {
-          const upward = pct > 0;
-          note = `${upward ? "▲" : "▼"} ${fmt1.format(Math.abs(pct))}% vs YTD avg`;
-          cls = upward === (m.better === "up") ? "good" : "bad";
-        }
+        const note = m.flag ? `${m.flag} · ${countNote(y.count)}` : countNote(y.count);
+        yBox.append(tile(m, fmtN(y.v, m.digits), note, null, statusEl(zones, y.v), zoneOf(zones, y.v)));
       }
-      mBox.append(tile(m.label, fmtN(c.v, m.digits), m.unit, note, cls));
+      if (c.v != null) {
+        const chip = y.v != null ? deltaChip(m, c.v, y.v) : null;
+        mBox.append(tile(m, fmtN(c.v, m.digits), null, chip, statusEl(zones, c.v), zoneOf(zones, c.v)));
+      }
     }
     const logged = mtd.filter((r) => r.weight != null).length;
-    mBox.append(tile("Days weighed", String(logged), `of ${now.getDate()}`, "This month"));
+    mBox.append(tile({ label: "Days weighed", icon: "📅", unit: `of ${now.getDate()}` }, String(logged), "This month"));
+    renderHero();
+  }
+
+  function ring(label, icon, value, max, text, zones) {
+    const box = make("div", "ring");
+    const size = 76, r = 31, c = 2 * Math.PI * r, frac = value == null ? 0 : Math.min(1, value / max);
+    const svg = document.createElementNS(SVG, "svg");
+    svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+    el("circle", { cx: 38, cy: 38, r, fill: "none", stroke: css("--grid"), "stroke-width": 8 }, svg);
+    el("circle", { cx: 38, cy: 38, r, fill: "none", stroke: zoneColor(zones, value) || css("--s1"), "stroke-width": 8,
+      "stroke-linecap": "round", "stroke-dasharray": `${frac * c} ${c}`, transform: "rotate(-90 38 38)" }, svg);
+    const t = el("text", { x: 38, y: 43, "text-anchor": "middle", "font-size": 15 }, svg);
+    t.textContent = icon;
+    box.append(svg);
+    const cap = make("div", "ring-text");
+    cap.append(make("b", null, text), make("span", null, label));
+    box.append(cap);
+    return box;
+  }
+  function renderHero() {
+    const hero = $("hero"); hero.replaceChildren();
+    const weighed = allRows.filter((r) => r.weight != null), goalKg = payload?.profile?.goalKg;
+    const left = make("div", "hero-goal");
+    if (weighed.length && goalKg) {
+      const start = weighed[0].weight, nowKg = weighed.at(-1).weight;
+      const pct = Math.max(0, Math.min(100, ((start - nowKg) / (start - goalKg)) * 100));
+      const weeks = Math.max(0, (nowKg - goalKg) / 0.5);
+      const eta = new Date(Date.now() + weeks * 7 * 864e5).toLocaleDateString("en", { month: "short", year: "numeric" });
+      left.append(make("div", "hero-kicker", "Your weight goal"));
+      const big = make("div", "hero-big", fmt1.format(nowKg)); big.append(make("small", null, ` kg, aiming for ${fmtInt.format(goalKg)} kg`));
+      left.append(big);
+      const bar = make("div", "hero-bar"), fill = make("i"); fill.style.width = pct + "%"; bar.append(fill); left.append(bar);
+      const ends = make("div", "hero-ends");
+      ends.append(make("span", null, `${fmt1.format(start)} kg start`), make("span", null, `${fmtInt.format(pct)}% there`), make("span", null, `${fmtInt.format(goalKg)} kg goal`));
+      left.append(ends);
+      left.append(make("div", "hero-note", `${fmt1.format(start - nowKg)} kg lost, ${fmt1.format(nowKg - goalKg)} kg to go, about ${eta} at 0.5 kg a week`));
+    } else if (weighed.length) {
+      left.append(make("div", "hero-kicker", "Your weight"));
+      const big = make("div", "hero-big", fmt1.format(weighed.at(-1).weight)); big.append(make("small", null, " kg"));
+      left.append(big);
+    }
+    const t = rows[todayStr()] || {};
+    const rings = make("div", "hero-rings");
+    rings.append(
+      ring("Steps today", "👟", t.steps ?? null, goal, t.steps != null ? fmtInt.format(t.steps) : "—", zonesFor("steps")),
+      ring("Active today", "🔥", t.activeKcal ?? null, 300, t.activeKcal != null ? `${fmtInt.format(t.activeKcal)} kcal` : "—", zonesFor("activeKcal")),
+      ring("Sleep last night", "😴", t.sleepH ?? null, 7, t.sleepH != null ? `${fmt1.format(t.sleepH)} h` : "—", zonesFor("sleepH")),
+    );
+    hero.append(left, rings);
   }
 
   const CHARTS = [
@@ -491,7 +661,9 @@
     { id: "vo2", title: "VO₂ max", desc: "ml/kg/min, a watch estimate", key: "vo2", unit: "", digits: 1, color: "--s3" },
     { id: "walk", title: "Walking heart rate", desc: "Average across each day's recorded walks", key: "walkHr", unit: "bpm", digits: 0, color: "--s2" },
     { id: "bmi", title: "BMI", desc: "Weight ÷ height², using the height you enter", key: "bmi", unit: "", digits: 1, color: "--s1", needsHeight: true },
-    { id: "bmr", title: "Basal metabolic rate", desc: "kcal a day, as estimated by your scale", key: "bmr", unit: "kcal", digits: 0, color: "--s1" },
+    { id: "kcal", title: "Daily calories burned", desc: "kcal, from Google Health: resting and active stacked", key: "totalKcal", unit: "kcal", digits: 0, color: "--s1", bars: true, stack: true },
+    { id: "active", title: "Active calories", desc: "kcal from movement above resting, from Google Health", key: "activeKcal", unit: "kcal", digits: 0, color: "--s3", bars: true },
+    { id: "bmr", title: "BMR / resting calories", desc: "kcal a day: Google's total minus active, or a formula where that's missing", key: "bmr", unit: "kcal", digits: 0, color: "--s1" },
     { id: "bf", title: "Body fat", desc: "Percent, as estimated by your scale", key: "bodyFat", unit: "%", digits: 1, color: "--s7" },
     { id: "fat", title: "Body fat mass", desc: "Kilograms, weight × body fat %", key: "fatKg", unit: "kg", digits: 1, color: "--s7" },
     { id: "bone", title: "Bone mass", desc: "Kilograms, as estimated by your scale", key: "boneKg", unit: "kg", digits: 1, color: "--s7" },
@@ -502,8 +674,8 @@
     if (box.childElementCount) return;
     for (const c of CHARTS) {
       const card = make("div", "card chart-card");
-      const desc = c.id === "bmr" && bmrEstimated ? "kcal a day, estimated from your weight, height, age and sex" : c.desc;
-      card.append(make("h3", null, c.title), make("div", "desc", desc));
+      card.append(make("h3", null, c.title), make("div", "desc", c.desc));
+      if (!c.custom) { const zl = make("div", "desc zone-line"); zl.id = "z-" + c.id; card.append(zl); }
       if (c.needsHeight) {
         const l = make("label", "controls"); l.style.cssText = "position:absolute;top:12px;right:14px;gap:6px";
         card.style.position = "relative";
@@ -521,19 +693,21 @@
       const area = make("div", "chart"); area.id = "c-" + c.id; card.append(area);
       box.append(card);
     }
-    const note = make("div", "card note-card span2");
-    note.append(make("strong", null, "HRV: "), "nothing has been recorded yet, so there is no chart for it.");
-    box.append(note);
   }
   function drawDailyCharts() {
     const s = daySeries();
     renderStages();
+    renderZoneKey();
     for (const c of CHARTS) {
       if (c.custom) continue;
+      const zones = c.stack ? null : zonesFor(c.key);
+      $("z-" + c.id).textContent = zoneText(zones, c.digits, c.unit === "%" ? "%" : c.unit);
+      $("z-" + c.id).hidden = !zones;
       const fmt = (v) => `${fmtN(v, c.digits)}${c.unit ? (c.unit === "%" ? "%" : " " + c.unit) : ""}`;
       chart($("c-" + c.id), s, {
-        key: c.key, color: css(c.color), bars: c.bars, fmt, compact: c.bars,
-        goal: c.bars ? goal : null, zero: !!(c.bars || c.key === "sleepH"),
+        key: c.key, color: css(c.color), bars: c.bars, fmt, compact: c.bars, zones,
+        goal: c.key === "steps" ? goal : null, zero: !!(c.bars || c.key === "sleepH"),
+        stack: c.stack ? [{ key: "baseKcal", label: "Resting", color: css("--s1") }, { key: "activeKcal", label: "Active", color: css("--s3") }] : null,
         empty: c.needsHeight && !heightCm ? "Enter your height to see BMI" : "No data for this period",
       });
     }
@@ -616,7 +790,19 @@
     const lo = bandOf(Math.min(...weighed.map((r) => r.weight))), hi = bandOf(Math.max(...weighed.map((r) => r.weight)));
     // darker always means heavier; the dark theme uses lighter steps so every band clears its surface
     const ramp = RAMP[isDark() ? "dark" : "light"];
-    const color = (b) => ramp[hi === lo ? 4 : Math.round(((b - lo) / (hi - lo)) * (ramp.length - 1))];
+    const wz = zonesFor("weight"), h2 = heightCm ? (heightCm / 100) ** 2 : null;
+    const CLASSES = [[18.5, "Underweight", "--st-bad"], [25, "Healthy", "--st-good"], [30, "Overweight", "--st-warn"],
+      [35, "Obese class I", "--st-bad"], [40, "Obese class II", "--st-bad2"], [Infinity, "Obese class III", "--st-bad3"]];
+    const classOf = (kg) => (h2 ? CLASSES.find(([to]) => kg / h2 < to) : null);
+    $("rampBar").parentElement.hidden = !!wz;
+    const color = (b) => { const k = classOf(b + 0.5); return k ? css(k[2]) : ramp[hi === lo ? 4 : Math.round(((b - lo) / (hi - lo)) * (ramp.length - 1))]; };
+    const key = $("bandKey"); key.replaceChildren(); key.hidden = !h2;
+    if (h2) for (const [to, label, v] of CLASSES) {
+      const prev = CLASSES[CLASSES.indexOf(CLASSES.find((c) => c[0] === to)) - 1]?.[0];
+      const range = prev == null ? `under ${fmt1.format(to * h2)}` : to === Infinity ? `${fmt1.format(prev * h2)}+` : `${fmt1.format(prev * h2)}–${fmt1.format(to * h2)}`;
+      const e = make("span"), i = make("i"); i.style.background = `var(${v})`;
+      e.append(i, `${label} ${range} kg`); key.append(e);
+    }
     $("rampLo").textContent = `${lo} kg`; $("rampHi").textContent = `${hi + 1} kg`;
     $("rampBar").style.background = `linear-gradient(to right, ${ramp[0]}, ${ramp.at(-1)})`;
     const months = monthsOf(weighed);
@@ -651,10 +837,13 @@
       for (const b of bands) {
         const row = make("div", "band-row");
         const sw = make("span", "sw"); sw.style.background = color(b);
-        row.append(sw, make("span", null, `${b}–${b + 1} kg`), make("span", null, `${counts[b]} ${counts[b] === 1 ? "day" : "days"}`),
+        const k = classOf(b + 0.5);
+        row.append(sw, make("span", null, `${b}–${b + 1} kg${k ? " · " + k[1] : ""}`), make("span", null, `${counts[b]} ${counts[b] === 1 ? "day" : "days"}`),
           make("span", "pct", `${fmtInt.format((counts[b] / list.length) * 100)}%`));
         card.append(row);
       }
+      const monthStatus = statusEl(wz, avg(kgs));
+      if (monthStatus) { const k = classOf(avg(kgs)); if (k) monthStatus.append(` · ${k[1]}`); card.append(monthStatus); }
       box.append(card);
     }
   }
@@ -707,8 +896,8 @@
     };
     const s = series();
     const kg = (v) => `${fmt1.format(v)} kg`;
-    chart($("cRecompFat"), s, { key: "fatKg", color: css("--s7"), fmt: kg, zero: false, empty: "No body composition data yet" });
-    chart($("cRecompLean"), s, { key: "leanKg", color: css("--s7"), fmt: kg, zero: false, empty: "No body composition data yet" });
+    chart($("cRecompFat"), s, { key: "fatKg", color: css("--s7"), fmt: kg, zero: false, zones: zonesFor("fatKg"), empty: "No body composition data yet" });
+    chart($("cRecompLean"), s, { key: "leanKg", color: css("--s7"), fmt: kg, zero: false, zones: zonesFor("leanKg"), empty: "No body composition data yet" });
     if (usable.length < 2) {
       $("recompRange").textContent = "Not enough data yet";
       $("recompVerdict").textContent = "Needs two months of body fat readings";
@@ -743,8 +932,8 @@
       const good = goodDown ? x < 0 : x > 0;
       return [`${x > 0 ? "▲ +" : "▼ −"}${fmt1.format(Math.abs(x))} kg`, good ? "good" : "bad"];
     };
-    for (const [label, val, c] of [["Weight", b.weight, change(dW, true)], ["Body fat mass", b.fatKg, change(dF, true)], ["Lean body mass", b.leanKg, change(dL, false)]])
-      tiles.append(tile(label, fmt1.format(val), "kg", c[0], c[1]));
+    for (const [label, val, c, zk] of [["Weight", b.weight, change(dW, true), "weight"], ["Body fat mass", b.fatKg, change(dF, true), "fatKg"], ["Lean body mass", b.leanKg, change(dL, false), "leanKg"]])
+      tiles.append(tile({ label, unit: "kg" }, fmt1.format(val), c[0], null, statusEl(zonesFor(zk), val), zoneOf(zonesFor(zk), val)));
   }
 
   // ---------- tabs
@@ -787,7 +976,8 @@
 
   function chart(box, data, o) {
     box.innerHTML = "";
-    const vals = data.map((r) => r[o.key]).filter((v) => v != null);
+    const val = (r) => r[o.key];
+    const vals = data.map(val).filter((v) => v != null);
     if (!vals.length) { box.append(make("div", "empty", o.empty)); return; }
     const W = Math.max(280, box.clientWidth), H = 190, padT = 18, padB = 22;
     let lo = Math.min(...vals), hi = Math.max(...vals);
@@ -809,6 +999,16 @@
     const x = (i) => padL + (i + 0.5) * (iw / data.length);
     const y = (v) => padT + ih - ((v - lo) / (hi - lo)) * ih;
 
+    // shaded safe / neutral / danger bands behind the data
+    if (o.zones) {
+      let from = lo;
+      for (const b of o.zones) {
+        const to = Math.min(b.to, hi);
+        if (to > from) el("rect", { x: padL, width: iw, y: y(to), height: y(from) - y(to), fill: css(STATUS[b.s].color), opacity: 0.13 }, svg);
+        from = Math.max(from, to);
+      }
+    }
+
     for (const t of ticks) {
       el("line", { x1: padL, x2: W - padR, y1: y(t), y2: y(t), stroke: css("--grid"), "stroke-width": 1 }, svg);
       el("text", { class: "tick", x: padL - 6, y: y(t) + 4, "text-anchor": "end" }, svg).textContent = tickFmt(t);
@@ -829,13 +1029,25 @@
       });
     }
 
-    if (o.bars) {
+    if (o.stack) {
+      const slot = iw / data.length, bw = Math.max(1.5, Math.min(24, slot - Math.min(2, slot * 0.25)));
+      data.forEach((r, i) => {
+        if (val(r) == null) return;
+        let bottom = 0;
+        for (const s of o.stack) {
+          const v = r[s.key]; if (v == null) continue;
+          const top = bottom + v;
+          el("rect", { x: x(i) - bw / 2, y: y(top), width: bw, height: Math.max(0, y(bottom) - y(top) - (bottom ? 1 : 0)), fill: s.color }, svg);
+          bottom = top;
+        }
+      });
+    } else if (o.bars) {
       const slot = iw / data.length, bw = Math.max(1.5, Math.min(24, slot - Math.min(2, slot * 0.25)));
       const rad = Math.min(4, bw / 2);
       data.forEach((r, i) => {
         const v = r[o.key]; if (v == null) return;
         const top = y(v), base = y(lo), h = Math.max(rad, base - top), l = x(i) - bw / 2;
-        el("path", { fill: o.color, d: `M${l},${base}V${base - h + rad}Q${l},${base - h} ${l + rad},${base - h}H${l + bw - rad}Q${l + bw},${base - h} ${l + bw},${base - h + rad}V${base}Z` }, svg);
+        el("path", { fill: zoneColor(o.zones, v) || o.color, d: `M${l},${base}V${base - h + rad}Q${l},${base - h} ${l + rad},${base - h}H${l + bw - rad}Q${l + bw},${base - h} ${l + bw},${base - h + rad}V${base}Z` }, svg);
       });
     } else {
       let d = "", lastI = null;
@@ -850,10 +1062,10 @@
       const idx = data.map((r, i) => (r[o.key] != null ? i : -1)).filter((i) => i >= 0);
       idx.forEach((i, j) => {
         const alone = (j === 0 || i - idx[j - 1] > MAX_GAP_DAYS) && (j === idx.length - 1 || idx[j + 1] - i > MAX_GAP_DAYS);
-        if (alone && j !== idx.length - 1) el("circle", { cx: x(i), cy: y(data[i][o.key]), r: 4, fill: o.color, stroke: css("--panel"), "stroke-width": 2 }, svg);
+        if (alone && j !== idx.length - 1) el("circle", { cx: x(i), cy: y(data[i][o.key]), r: 4, fill: zoneColor(o.zones, data[i][o.key]) || o.color, stroke: css("--panel"), "stroke-width": 2 }, svg);
       });
       const end = idx.at(-1), ev = data[end][o.key];
-      el("circle", { cx: x(end), cy: y(ev), r: 4, fill: o.color, stroke: css("--panel"), "stroke-width": 2 }, svg);
+      el("circle", { cx: x(end), cy: y(ev), r: 4, fill: zoneColor(o.zones, ev) || o.color, stroke: css("--panel"), "stroke-width": 2 }, svg);
       const nearRight = x(end) > W * 0.82, nearLeft = x(end) < W * 0.18;
       // sit above the line's recent peak so the label doesn't cross it
       const span = 70 * (data.length / iw);
@@ -877,7 +1089,9 @@
       const px = ((ev.clientX - rect.left) / rect.width) * W;
       const i = Math.max(0, Math.min(data.length - 1, Math.floor((px - padL) / (iw / data.length))));
       const r = data[i], v = r[o.key];
-      tip.replaceChildren(make("div", "d", longDate(r.date)), make("div", null, v != null ? o.fmt(v) : "No data"));
+      const zs = zoneOf(o.zones, v);
+      tip.replaceChildren(make("div", "d", longDate(r.date)), make("div", null, v != null ? o.fmt(v) + (zs ? ` · ${STATUS[zs].label}` : "") : "No data"));
+      if (o.stack && v != null) for (const s of o.stack) if (r[s.key] != null) tip.append(make("div", "d", `${s.label}: ${o.fmt(r[s.key])}`));
       hl.setAttribute("x1", x(i)); hl.setAttribute("x2", x(i)); hl.setAttribute("visibility", "visible");
       if (v != null && !o.bars) { dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(v)); dot.setAttribute("visibility", "visible"); }
       else dot.setAttribute("visibility", "hidden");
@@ -896,8 +1110,8 @@
   $("tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) switchTab(b.dataset.tab); });
   $("range").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
-    range = b.dataset.range === "ytd" ? "ytd" : Number(b.dataset.range);
-    store.set("hd-range2", String(range));
+    range = Number(b.dataset.range);
+    store.set("hd-range3", String(range));
     setRangeButtons();
     drawDailyCharts();
   });

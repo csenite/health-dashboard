@@ -38,6 +38,8 @@ TYPES = {
     "distance": 90,
     "heart-rate": 14,
     "weight": 90,
+    "total-calories": 14,
+    "active-energy-burned": 90,
 }
 SAMSUNG_APP = "com.sec.android.app.shealth"
 BACKFILL_DAYS = 365   # first run: how far back to fetch
