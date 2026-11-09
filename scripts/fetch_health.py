@@ -440,8 +440,10 @@ def main():
         print("No data source worked. Errors: " + json.dumps(errors))
         sys.exit(1)
 
+    # Height, birth date and sex stay in a secret and the encrypted file, never in the public code.
+    profile = json.loads(os.environ.get("PROFILE_JSON") or "null") or existing.get("profile")
     new = {"days": dict(sorted(days.items())), "workouts": workouts[:500], "tz": str(TZ),
-           "errors": errors, "sources": sources_ok}
+           "errors": errors, "sources": sources_ok, "profile": profile}
     old = {k: before.get(k) for k in new}
     if new == old and (ENC_FILE.exists() or PLAIN_FILE.exists()):
         print("No changes.")

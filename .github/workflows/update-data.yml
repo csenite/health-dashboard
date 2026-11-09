@@ -40,6 +40,7 @@ jobs:
           DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
           TZ_NAME: Asia/Kuala_Lumpur
           FULL_REFRESH: ${{ inputs.full }}
+          PROFILE_JSON: ${{ secrets.PROFILE_JSON }}
         run: python scripts/fetch_health.py
 
       - name: Commit updated data

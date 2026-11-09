@@ -303,6 +303,20 @@
       a.beats += w.avgHr * w.seconds; a.secs += w.seconds;
     }
     for (const [day, a] of Object.entries(walks)) (out[day] ||= { date: day }).walkHr = a.beats / a.secs;
+
+    // No scale BMR at all: estimate it with Mifflin-St Jeor from the encrypted profile
+    const p = data.profile;
+    bmrEstimated = false;
+    if (p?.heightCm && p?.birthDate && p?.sex && !Object.values(out).some((r) => r.bmr != null)) {
+      const [by, bm, bd] = p.birthDate.split("-").map(Number);
+      for (const r of Object.values(out)) {
+        if (r.weight == null) continue;
+        const [y, m, d] = r.date.split("-").map(Number);
+        const age = y - by - (m < bm || (m === bm && d < bd) ? 1 : 0);
+        r.bmr = 10 * r.weight + 6.25 * p.heightCm - 5 * age + (p.sex === "M" ? 5 : -161);
+        bmrEstimated = true;
+      }
+    }
     return out;
   }
 
@@ -322,7 +336,7 @@
   }
 
   // ---------- state
-  let payload = null, rows = {}, allRows = [];
+  let payload = null, rows = {}, allRows = [], bmrEstimated = false;
   const savedRange = store.get("hd-range2");
   let range = savedRange === "30" || savedRange === "90" ? Number(savedRange) : "ytd";
   let goal = Number(store.get("hd-goal")) || 8000;
@@ -367,6 +381,7 @@
   function show(data, encrypted, message) {
     payload = data;
     rows = normalize(data);
+    if (!heightCm && data.profile?.heightCm) heightCm = data.profile.heightCm;
     allRows = Object.values(rows).sort((a, b) => a.date.localeCompare(b.date));
     $("app").hidden = false;
     $("lockAgain").hidden = !encrypted;
@@ -487,7 +502,8 @@
     if (box.childElementCount) return;
     for (const c of CHARTS) {
       const card = make("div", "card chart-card");
-      card.append(make("h3", null, c.title), make("div", "desc", c.desc));
+      const desc = c.id === "bmr" && bmrEstimated ? "kcal a day, estimated from your weight, height, age and sex" : c.desc;
+      card.append(make("h3", null, c.title), make("div", "desc", desc));
       if (c.needsHeight) {
         const l = make("label", "controls"); l.style.cssText = "position:absolute;top:12px;right:14px;gap:6px";
         card.style.position = "relative";
