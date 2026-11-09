@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "23 */3 * * *"   # every 3 hours
   workflow_dispatch:          # "Run workflow" button on the Actions tab
+    inputs:
+      full:
+        description: "Re-fetch the past year"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -34,6 +39,7 @@ jobs:
           HEALTH_SYNC_FOLDER_ID: 1_C3GyA_dQGNjn6a2Hpe_suT_B6G_PPBl   # your "Health Sync" folder in Drive
           DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
           TZ_NAME: Asia/Kuala_Lumpur
+          FULL_REFRESH: ${{ inputs.full }}
         run: python scripts/fetch_health.py
 
       - name: Commit updated data

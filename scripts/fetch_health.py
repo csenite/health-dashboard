@@ -17,6 +17,7 @@ import datetime as dt
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -67,6 +68,15 @@ def access_token() -> str:
 
 
 # ---------------------------------------------------------------- API
+def api_request(method: str, url: str, **kwargs):
+    """Google's API sometimes returns a brief 503, so give it a few more tries."""
+    for attempt in range(4):
+        r = requests.request(method, url, **kwargs)
+        if r.status_code not in (429, 500, 502, 503, 504) or attempt == 3:
+            return r
+        time.sleep(10 * (attempt + 1))
+
+
 def civil(d: dt.date) -> dict:
     return {"date": {"year": d.year, "month": d.month, "day": d.day},
             "time": {"hours": 0, "minutes": 0, "seconds": 0}}
@@ -109,7 +119,7 @@ def daily_rollup(token: str, data_type: str, start: dt.date, end_excl: dt.date) 
     while True:
         if page:
             body["pageToken"] = page
-        r = requests.post(url, headers={"Authorization": f"Bearer {token}"}, json=body, timeout=60)
+        r = api_request("POST", url, headers={"Authorization": f"Bearer {token}"}, json=body, timeout=60)
         if r.status_code != 200:
             raise RuntimeError(f"HTTP {r.status_code}: {r.text[:300]}")
         data = r.json()
@@ -186,7 +196,7 @@ def samsung_steps(token: str, since: dt.date) -> dict:
         params = {"pageSize": 1000}
         if page:
             params["pageToken"] = page
-        r = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params=params, timeout=60)
+        r = api_request("GET", url, headers={"Authorization": f"Bearer {token}"}, params=params, timeout=60)
         if r.status_code != 200:
             raise RuntimeError(f"HTTP {r.status_code}: {r.text[:300]}")
         data, seen = r.json(), []
@@ -213,7 +223,7 @@ def list_points(token: str, data_type: str) -> list:
         params = {"pageSize": 1000}
         if page:
             params["pageToken"] = page
-        r = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params=params, timeout=60)
+        r = api_request("GET", url, headers={"Authorization": f"Bearer {token}"}, params=params, timeout=60)
         if r.status_code != 200:
             raise RuntimeError(f"HTTP {r.status_code}: {r.text[:300]}")
         data = r.json()
@@ -360,11 +370,10 @@ def fetch_google_health(days: dict, workouts: list, errors: dict):
     fetch_history(token, days, workouts, errors)
     today = dt.datetime.now(TZ).date()
     end_excl = today + dt.timedelta(days=1)
-    have_api = any(any(k in TYPES for k in v) for v in days.values())
-    lookback = REFRESH_DAYS if have_api else BACKFILL_DAYS
-    have_samsung = any("samsung-steps" in v for v in days.values())
+    full = os.environ.get("FULL_REFRESH") == "true"   # the workflow's "full refresh" option
+    window = lambda key: BACKFILL_DAYS if full or not any(key in v for v in days.values()) else REFRESH_DAYS
     try:
-        since = today - dt.timedelta(days=(REFRESH_DAYS if have_samsung else BACKFILL_DAYS) - 1)
+        since = today - dt.timedelta(days=window("samsung-steps") - 1)
         totals = samsung_steps(token, since)
         for day, count in totals.items():
             days.setdefault(day, {})["samsung-steps"] = {"count": count}
@@ -373,7 +382,7 @@ def fetch_google_health(days: dict, workouts: list, errors: dict):
         errors["samsung-steps"] = str(e)[:300]
         print(f"Google Health samsung-steps: FAILED {e}")
     for data_type, max_span in TYPES.items():
-        start = today - dt.timedelta(days=lookback - 1)
+        start = today - dt.timedelta(days=window(data_type) - 1)
         fetched = 0
         try:
             while start < end_excl:
