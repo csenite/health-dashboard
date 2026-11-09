@@ -343,6 +343,12 @@
     }
     for (const [day, a] of Object.entries(walks)) (out[day] ||= { date: day }).walkHr = a.beats / a.secs;
 
+    // Weigh-ins entered by hand, kept in the encrypted profile. Real readings win on the same day.
+    for (const [day, kg] of Object.entries(data.profile?.manualWeights || {})) {
+      const r = (out[day] ||= { date: day });
+      if (r.weight == null) r.weight = n(kg);
+    }
+
     // Resting calories: Google's total minus active, then the scale, then Mifflin-St Jeor
     const p = data.profile, today = ymd(new Date());
     for (const r of Object.values(out)) {
