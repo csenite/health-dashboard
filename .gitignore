@@ -1,0 +1,14 @@
+# Secrets - never upload these
+client_secret*.json
+*service*account*.json
+health-dashboard-*.json
+token.json
+tools/github_secrets.txt
+results.txt
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+preview/

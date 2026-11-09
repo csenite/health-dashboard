@@ -1,0 +1,50 @@
+name: Update health data
+
+on:
+  schedule:
+    - cron: "23 */3 * * *"   # every 3 hours
+  workflow_dispatch:          # "Run workflow" button on the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-health-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests cryptography google-auth
+
+      - name: Fetch from Google Health
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          HEALTH_SYNC_FOLDER_ID: 1_C3GyA_dQGNjn6a2Hpe_suT_B6G_PPBl   # your "Health Sync" folder in Drive
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+          TZ_NAME: Asia/Kuala_Lumpur
+        run: python scripts/fetch_health.py
+
+      - name: Commit updated data
+        if: always()   # still save Health Sync data when the Google Health login has expired
+        run: |
+          git config user.name "health-data-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data
+          if git diff --cached --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "Update health data"
+            git push
+          fi
