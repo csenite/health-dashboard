@@ -41,6 +41,8 @@
   h2.section { font-size: 14px; font-weight: 600; margin: 22px 0 10px; }
   h2.section small { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 6px; }
   .sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  .head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .ver { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; padding: 2px 9px; border: 1px solid var(--line); border-radius: 99px; background: var(--panel); cursor: default; }
   .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
   .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 3px; }
   .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 6px; cursor: pointer; }
@@ -176,12 +178,16 @@
       <h1>Health Dashboard</h1>
       <div class="sub" id="updated">—</div>
     </div>
+    <div class="head-right">
+    <!-- Version: a very big update adds 0.1, a minor update adds 0.0.1 -->
+    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am">v1.3.1 · 11 Nov 2026</div>
     <div class="controls">
       <div class="seg" id="theme" role="group" aria-label="Theme">
         <button data-theme-set="light">Light</button>
         <button data-theme-set="dark">Dark</button>
       </div>
       <button class="linkbtn" id="lockAgain" hidden>Lock</button>
+    </div>
     </div>
   </header>
 
@@ -660,10 +666,14 @@
   // ---------- weekly summary card: written from the last 7 days vs the 7 before
   function renderSummary() {
     const box = $("summary"); box.replaceChildren();
-    const today = new Date(), t = todayStr();
-    const days = (a, b) => allRows.filter((r) => r.date >= ymd(addDays(today, -b)) && r.date <= ymd(addDays(today, -a)));
-    const wks = (a, b) => (payload.workouts || []).filter((w) => w.date >= ymd(addDays(today, -b)) && w.date <= ymd(addDays(today, -a)));
-    const cur = days(0, 6), prev = days(7, 13), wc = wks(0, 6), wp = wks(7, 13);
+    // The summary covers the last full week, Monday to Sunday, and turns over every Monday at 7 am.
+    const now = new Date(), t = todayStr();
+    let mon = monday(now); mon.setHours(7, 0, 0, 0);
+    if (now < mon) mon = addDays(mon, -7);
+    const start = addDays(mon, -7), prevStart = addDays(mon, -14), next = addDays(mon, 7);
+    const within = (d, a, b) => d && d >= ymd(a) && d <= ymd(addDays(b, -1));
+    const cur = allRows.filter((r) => within(r.date, start, mon)), prev = allRows.filter((r) => within(r.date, prevStart, start));
+    const wc = (payload.workouts || []).filter((w) => within(w.date, start, mon)), wp = (payload.workouts || []).filter((w) => within(w.date, prevStart, start));
     const mins = (list) => Math.round(list.reduce((a, w) => a + (w.seconds || 0) / 60, 0));
     const wins = [], focus = [];
 
@@ -711,8 +721,8 @@
     cheer.push("Consistency beats perfection: you don't need a perfect week, just more good days than last week.");
 
     const head = make("div", "sum-head");
-    head.append(make("div", "hero-kicker", "Your week"),
-      make("div", "sum-range", `${shortDate(ymd(addDays(today, -6)))} – ${shortDate(t)}, compared with the 7 days before`));
+    head.append(make("div", "hero-kicker", "Last week's summary"),
+      make("div", "sum-range", `${longDate(ymd(start))} – ${longDate(ymd(addDays(mon, -1)))}, compared with the week before · next summary ${longDate(ymd(next))}, 7:00 am`));
     box.append(head);
     const section = (title, icon, items, cls) => {
       if (!items.length) return;
