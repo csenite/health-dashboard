@@ -183,7 +183,8 @@
 
   <nav class="tabs" id="tabs" role="tablist">
     <button role="tab" data-tab="daily">Daily Health</button>
-    <button role="tab" data-tab="bands">Weight Bands</button>
+    <button role="tab" data-tab="bands">Weight Bands · FFMI</button>
+    <button role="tab" data-tab="bandsBmi">Weight Bands · BMI</button>
     <button role="tab" data-tab="monthly">Monthly Averages</button>
     <button role="tab" data-tab="recomp">Recomposition Signal</button>
   </nav>
@@ -472,6 +473,27 @@
     warn: { label: "Neutral", icon: "■", color: "--st-warn" },
     bad: { label: "Danger", icon: "▲", color: "--st-bad" },
   };
+  // Weight bands from body fat at your current lean mass: weight = lean mass / (1 - body fat %).
+  // Fairer than BMI for a muscular build. Falls back to BMI when there is no lean mass.
+  function leanRef() {
+    const l = allRows.filter((r) => r.leanKg != null).slice(-10).map((r) => r.leanKg);
+    return l.length >= 3 ? avg(l) : null;
+  }
+  function weightClasses(mode) {
+    const lean = leanRef(), male = payload?.profile?.sex === "M";
+    if (mode !== "bmi" && lean && male) {
+      const kg = (bf) => lean / (1 - bf / 100);
+      return { basis: "bf", lean, list: [
+        [kg(8), "Very low body fat, under 8%", "--st-bad"], [kg(15), "Lean, 8–15%", "--st-good"], [kg(20), "Fit, 15–20%", "--st-good"],
+        [kg(25), "Moderate, 20–25%", "--st-warn"], [kg(30), "High, 25–30%", "--st-bad"], [kg(35), "Very high, 30–35%", "--st-bad2"],
+        [Infinity, "Very high, 35%+", "--st-bad3"]] };
+    }
+    const h2 = heightCm ? (heightCm / 100) ** 2 : null;
+    if (!h2) return null;
+    return { basis: "bmi", list: [[18.5, "Underweight", "--st-bad"], [25, "Healthy", "--st-good"], [30, "Overweight", "--st-warn"],
+      [35, "Obese class I", "--st-bad"], [40, "Obese class II", "--st-bad2"], [Infinity, "Obese class III", "--st-bad3"]].map(([t, l, c]) => [t * h2, l, c]) };
+  }
+
   function zonesFor(key) {
     const prof = payload?.profile, male = prof?.sex === "M";
     const h2 = heightCm ? (heightCm / 100) ** 2 : null;
@@ -484,7 +506,12 @@
     const INF = Infinity;
     switch (key) {
       case "bmi": return z([18.5, "bad"], [25, "good"], [30, "warn"], [INF, "bad"]);                 // WHO
-      case "weight": return h2 && z([18.5 * h2, "bad"], [25 * h2, "good"], [30 * h2, "warn"], [INF, "bad"]); // WHO BMI x height
+      case "weightBmi": return h2 && z([18.5 * h2, "bad"], [25 * h2, "good"], [30 * h2, "warn"], [INF, "bad"]);
+      case "weight": {
+        const lean = male ? leanRef() : null;
+        if (lean) return z([lean / 0.92, "bad"], [lean / 0.8, "good"], [lean / 0.75, "warn"], [INF, "bad"]); // 8-20% body fat is safe
+        return h2 && z([18.5 * h2, "bad"], [25 * h2, "good"], [30 * h2, "warn"], [INF, "bad"]);           // WHO BMI x height
+      }
       case "bodyFat": return male ? z([8, "bad"], [20, "good"], [25, "warn"], [INF, "bad"]) : null;  // Gallagher 2000, men 20-39
       case "fatKg": return h2 && male ? z([3 * h2, "warn"], [6 * h2, "good"], [9 * h2, "warn"], [INF, "bad"]) : null; // fat mass index, Kelly 2009
       case "leanKg": return h2 && male ? z([17 * h2, "bad"], [18 * h2, "warn"], [INF, "good"]) : null; // fat-free mass index
@@ -658,7 +685,7 @@
   }
 
   const CHARTS = [
-    { id: "weight", title: "Weight", desc: "Kilograms, morning reading where there is one", key: "weight", unit: "kg", digits: 1, color: "--s1" },
+    { id: "weight", title: "Weight", desc: "Kilograms, morning reading. Zones use body fat at your current lean mass, not BMI", key: "weight", unit: "kg", digits: 1, color: "--s1" },
     { id: "sleep", title: "Total sleep", desc: "Hours asleep, by the day you woke up", key: "sleepH", unit: "h", digits: 1, color: "--s1" },
     { id: "stages", title: "Sleep stages", desc: "Your last 7 recorded nights", custom: true },
     { id: "rhr", title: "Resting heart rate", desc: "Likely reads high, since your daily lows are well below it", key: "rhr", unit: "bpm", digits: 0, color: "--s2" },
@@ -666,7 +693,7 @@
     { id: "steps", title: "Daily steps", desc: "Samsung Health count, which avoids double counting. The line is your goal.", key: "steps", unit: "", digits: 0, color: "--s3", bars: true },
     { id: "vo2", title: "VO₂ max", desc: "ml/kg/min, a watch estimate", key: "vo2", unit: "", digits: 1, color: "--s3" },
     { id: "walk", title: "Walking heart rate", desc: "Average across each day's recorded walks", key: "walkHr", unit: "bpm", digits: 0, color: "--s2" },
-    { id: "bmi", title: "BMI", desc: "Weight ÷ height², using the height you enter", key: "bmi", unit: "", digits: 1, color: "--s1", needsHeight: true },
+    { id: "bmi", title: "BMI", desc: "Standard WHO zones. BMI can't tell muscle from fat, so your weight zones use body fat instead", key: "bmi", unit: "", digits: 1, color: "--s1", needsHeight: true },
     { id: "kcal", title: "Daily calories burned", desc: "kcal, from Google Health: resting and active stacked", key: "totalKcal", unit: "kcal", digits: 0, color: "--s1", bars: true, stack: true },
     { id: "active", title: "Active calories", desc: "kcal from movement above resting, from Google Health", key: "activeKcal", unit: "kcal", digits: 0, color: "--s3", bars: true },
     { id: "bmr", title: "BMR / resting calories", desc: "kcal a day: Google's total minus active, or a formula where that's missing", key: "bmr", unit: "kcal", digits: 0, color: "--s1" },
@@ -788,7 +815,7 @@
     for (const r of list) (out[r.date.slice(0, 7)] ||= []).push(r);
     return out;
   };
-  function renderBands() {
+  function renderBands(mode) {
     const weighed = allRows.filter((r) => r.weight != null);
     const box = $("bandCards"); box.replaceChildren();
     if (!weighed.length) { box.append(make("div", "notice", "No weigh-ins yet.")); return; }
@@ -796,18 +823,21 @@
     const lo = bandOf(Math.min(...weighed.map((r) => r.weight))), hi = bandOf(Math.max(...weighed.map((r) => r.weight)));
     // darker always means heavier; the dark theme uses lighter steps so every band clears its surface
     const ramp = RAMP[isDark() ? "dark" : "light"];
-    const wz = zonesFor("weight"), h2 = heightCm ? (heightCm / 100) ** 2 : null;
-    const CLASSES = [[18.5, "Underweight", "--st-bad"], [25, "Healthy", "--st-good"], [30, "Overweight", "--st-warn"],
-      [35, "Obese class I", "--st-bad"], [40, "Obese class II", "--st-bad2"], [Infinity, "Obese class III", "--st-bad3"]];
-    const classOf = (kg) => (h2 ? CLASSES.find(([to]) => kg / h2 < to) : null);
+    const wz = zonesFor(mode === "bmi" ? "weightBmi" : "weight"), wc = weightClasses(mode), CLASSES = wc?.list || [];
+    const classOf = (kg) => CLASSES.find(([to]) => kg < to) || null;
     $("rampBar").parentElement.hidden = !!wz;
     const color = (b) => { const k = classOf(b + 0.5); return k ? css(k[2]) : ramp[hi === lo ? 4 : Math.round(((b - lo) / (hi - lo)) * (ramp.length - 1))]; };
-    const key = $("bandKey"); key.replaceChildren(); key.hidden = !h2;
-    if (h2) for (const [to, label, v] of CLASSES) {
-      const prev = CLASSES[CLASSES.indexOf(CLASSES.find((c) => c[0] === to)) - 1]?.[0];
-      const range = prev == null ? `under ${fmt1.format(to * h2)}` : to === Infinity ? `${fmt1.format(prev * h2)}+` : `${fmt1.format(prev * h2)}–${fmt1.format(to * h2)}`;
-      const e = make("span"), i = make("i"); i.style.background = `var(${v})`;
-      e.append(i, `${label} ${range} kg`); key.append(e);
+    const key = $("bandKey"); key.replaceChildren(); key.hidden = !wc;
+    if (wc) {
+      key.append(make("span", null, wc.basis === "bf"
+        ? `Based on body fat at your current lean mass of ${fmt1.format(wc.lean)} kg${heightCm ? ` (FFMI ${fmt1.format(wc.lean / (heightCm / 100) ** 2)})` : ""}:`
+        : "Based on BMI for your height:"));
+      CLASSES.forEach(([to, label, v], idx) => {
+        const prev = CLASSES[idx - 1]?.[0];
+        const range = prev == null ? `under ${fmt1.format(to)}` : to === Infinity ? `${fmt1.format(prev)}+` : `${fmt1.format(prev)}–${fmt1.format(to)}`;
+        const e = make("span"), i = make("i"); i.style.background = `var(${v})`;
+        e.append(i, `${label}: ${range} kg`); key.append(e);
+      });
     }
     $("rampLo").textContent = `${lo} kg`; $("rampHi").textContent = `${hi + 1} kg`;
     $("rampBar").style.background = `linear-gradient(to right, ${ramp[0]}, ${ramp.at(-1)})`;
@@ -944,16 +974,16 @@
 
   // ---------- tabs
   function switchTab(name) {
-    if (!["daily", "bands", "monthly", "recomp"].includes(name)) name = "daily";
+    if (!["daily", "bands", "bandsBmi", "monthly", "recomp"].includes(name)) name = "daily";
     tab = name; store.set("hd-tab", name);
     for (const b of $("tabs").querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
-    for (const k of ["daily", "bands", "monthly", "recomp"]) $("tab-" + k).hidden = k !== name;
+    for (const k of ["daily", "bands", "monthly", "recomp"]) $("tab-" + k).hidden = k !== (name === "bandsBmi" ? "bands" : name);
     renderTab();
   }
   function renderTab() {
     if (!payload) return;
     if (tab === "daily") { renderTiles(); buildChartCards(); drawDailyCharts(); renderWorkouts(); }
-    if (tab === "bands") renderBands();
+    if (tab === "bands" || tab === "bandsBmi") renderBands(tab === "bandsBmi" ? "bmi" : "lean");
     if (tab === "monthly") renderMonthly();
     if (tab === "recomp") renderRecomp();
   }
