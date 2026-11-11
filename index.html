@@ -78,6 +78,12 @@
   .ring-text b { display: block; font-size: 14px; font-weight: 650; }
   .ring-text span { font-size: 11.5px; color: var(--muted); }
   .band-card { display: flex; flex-direction: column; }
+  #summary { margin-bottom: 18px; padding: 18px 22px; border-left: 4px solid var(--s3); }
+  .sum-range { font-size: 13px; color: var(--muted); margin: 2px 0 6px; }
+  .sum-sec h3 { font-size: 14px; font-weight: 650; margin: 12px 0 4px; }
+  .sum-sec ul { margin: 0; padding-left: 20px; }
+  .sum-sec li { font-size: 14px; line-height: 1.5; margin: 3px 0; }
+  .sum-sec.cheer li { font-style: italic; }
   .tile .label { font-size: 12.5px; color: var(--muted); }
   .tile .value { font-size: 25px; font-weight: 650; letter-spacing: -.02em; margin-top: 2px; white-space: nowrap; }
   .tile .value small { font-size: 12.5px; font-weight: 500; color: var(--muted); margin-left: 3px; letter-spacing: 0; }
@@ -191,6 +197,9 @@
 
   <section id="tab-daily" hidden>
     <div id="hero"></div>
+    <div class="card" id="summary"></div>
+    <h2 class="section" style="margin-top:0">This week vs last week</h2>
+    <div class="tiles" id="weekly" style="margin-bottom:6px"></div>
     <h2 class="section" id="ytdTitle" style="margin-top:0">Year to date</h2>
     <div class="tiles" id="ytdTiles"></div>
     <h2 class="section" id="mtdTitle">Month to date</h2>
@@ -333,6 +342,7 @@
         activeKcal: n(t["active-energy-burned"]?.kcalSum),
         sleepH: sleep?.minutes ? sleep.minutes / 60 : null,
         stages: sleep?.stages || null,
+        bedH: clockH(sleep?.start), wakeH: clockH(sleep?.end),
       };
     }
     // walking heart rate: time-weighted across that day's walks
@@ -343,6 +353,14 @@
       a.beats += w.avgHr * w.seconds; a.secs += w.seconds;
     }
     for (const [day, a] of Object.entries(walks)) (out[day] ||= { date: day }).walkHr = a.beats / a.secs;
+    // run pace: minutes per km across that day's runs and treadmill sessions with a distance
+    const runs = {};
+    for (const w of data.workouts || []) {
+      if (!w.date || !/RUN|TREADMILL/.test(w.type || "") || !(w.km > 0.3) || !w.seconds) continue;
+      const a = (runs[w.date] ||= { secs: 0, km: 0 });
+      a.secs += w.seconds; a.km += w.km;
+    }
+    for (const [day, a] of Object.entries(runs)) { const r = (out[day] ||= { date: day }); r.runPace = a.secs / 60 / a.km; r.runKm = a.km; }
 
     // Weigh-ins entered by hand, kept in the encrypted profile. Real readings win on the same day.
     for (const [day, kg] of Object.entries(data.profile?.manualWeights || {})) {
@@ -428,6 +446,7 @@
     rows = normalize(data);
     if (!heightCm && data.profile?.heightCm) heightCm = data.profile.heightCm;
     allRows = Object.values(rows).sort((a, b) => a.date.localeCompare(b.date));
+    enrich();
     $("app").hidden = false;
     $("lockAgain").hidden = !encrypted;
     $("lockAgain").onclick = () => { store.del("hd-pw"); location.reload(); };
@@ -603,12 +622,12 @@
     if (status) c.append(status);
     return c;
   }
-  function deltaChip(m, cur, base) {
+  function deltaChip(m, cur, base, what = "YTD avg") {
     const pct = ((cur - base) / base) * 100, near = Math.abs(pct) < 1;
     const s = near || !m.better ? "warn" : (pct > 0) === (m.better === "up") ? "good" : "bad";
     const chip = make("div", "chip " + s), i = make("i", null, near ? "■" : pct > 0 ? "▲" : "▼");
     i.style.color = `var(${STATUS[s].color})`;
-    chip.append(i, near ? "Level with YTD avg" : `${fmt1.format(Math.abs(pct))}% vs YTD avg`);
+    chip.append(i, near ? `Level with ${what}` : `${fmt1.format(Math.abs(pct))}% vs ${what}`);
     return chip;
   }
   const countNote = (count) => (count === 1 ? "1 reading" : `${count} days`);
@@ -634,6 +653,161 @@
     const logged = mtd.filter((r) => r.weight != null).length;
     mBox.append(tile({ label: "Days weighed", icon: "📅", unit: `of ${now.getDate()}` }, String(logged), "This month"));
     renderHero();
+    renderSummary();
+    renderWeekly();
+  }
+
+  // ---------- weekly summary card: written from the last 7 days vs the 7 before
+  function renderSummary() {
+    const box = $("summary"); box.replaceChildren();
+    const today = new Date(), t = todayStr();
+    const days = (a, b) => allRows.filter((r) => r.date >= ymd(addDays(today, -b)) && r.date <= ymd(addDays(today, -a)));
+    const wks = (a, b) => (payload.workouts || []).filter((w) => w.date >= ymd(addDays(today, -b)) && w.date <= ymd(addDays(today, -a)));
+    const cur = days(0, 6), prev = days(7, 13), wc = wks(0, 6), wp = wks(7, 13);
+    const mins = (list) => Math.round(list.reduce((a, w) => a + (w.seconds || 0) / 60, 0));
+    const wins = [], focus = [];
+
+    const wNow = avg(cur.map((r) => r.weight)), wPrev = avg(prev.map((r) => r.weight));
+    if (wNow != null && wPrev != null) {
+      const d = wNow - wPrev;
+      if (d <= -0.2) wins.push(`Weight averaged ${fmt1.format(wNow)} kg, down ${fmt1.format(-d)} kg on last week.`);
+      else if (d >= 0.2) focus.push(`Weight averaged ${fmt1.format(wNow)} kg, up ${fmt1.format(d)} kg on last week. Your weight usually jumps after Saturday, so that's the meal to keep an eye on.`);
+      else wins.push(`Weight held steady at about ${fmt1.format(wNow)} kg.`);
+    }
+    const sNow = avg(cur.filter((r) => r.date !== t).map((r) => r.steps)), sPrev = avg(prev.map((r) => r.steps));
+    if (sNow != null) {
+      if (sNow >= goal) wins.push(`You averaged ${fmtInt.format(sNow)} steps a day, above your ${fmtInt.format(goal)} goal.`);
+      else if (sPrev && sNow > sPrev * 1.05) wins.push(`Steps rose to ${fmtInt.format(sNow)} a day, up ${fmtInt.format((sNow / sPrev - 1) * 100)}% on last week.`);
+      else focus.push(`Steps averaged ${fmtInt.format(sNow)} a day. A 20-minute walk adds roughly 2,000.`);
+    }
+    if (wc.length) {
+      const up = wc.length > wp.length ? `, up from ${wp.length}` : "";
+      wins.push(`You logged ${wc.length} workout${wc.length === 1 ? "" : "s"}, ${mins(wc)} minutes in total${up}.`);
+    } else focus.push("No workouts were recorded this week. Even two 30-minute walks count.");
+    const nights = cur.filter((r) => r.sleepH != null);
+    if (nights.length) {
+      const sl = avg(nights.map((r) => r.sleepH)), best = nights.reduce((a, r) => (r.sleepH > a.sleepH ? r : a));
+      const bestTxt = best.sleepH >= 7 ? ` Your best night was ${fmt1.format(best.sleepH)} h on ${longDate(best.date)}${best.bedH != null ? `, in bed by ${clock(best.bedH)}` : ""}. That's the routine to repeat.` : "";
+      if (sl >= 7) wins.push(`Sleep averaged ${fmt1.format(sl)} h a night, right on target.${bestTxt}`);
+      else focus.push(`Sleep averaged ${fmt1.format(sl)} h a night, short of 7 h. Aim to be in bed by about 11:45 pm.${bestTxt}`);
+    }
+    const rate = weightRate();
+    if (rate != null && rate > 0.05) wins.push(`Your 4-week trend is down ${fmt1.format(rate)} kg a week.`);
+    else if (rate != null && rate < -0.05) focus.push(`Your 4-week trend is up ${fmt1.format(-rate)} kg a week. Weighing your food for a week will show exactly where the extra comes from.`);
+
+    // encouragement, based on the whole journey and this week
+    const weighed = allRows.filter((r) => r.weight != null), goalKg = payload?.profile?.goalKg;
+    const cheer = [];
+    if (weighed.length > 1) {
+      const start = weighed[0], lost = start.weight - weighed.at(-1).weight;
+      if (lost > 1) {
+        const pct = goalKg ? Math.round((lost / (start.weight - goalKg)) * 100) : null;
+        cheer.push(`You've lost ${fmt1.format(lost)} kg since ${parseDay(start.date).toLocaleDateString("en", { month: "long" })}${pct ? `, which is ${pct}% of the way to ${fmtInt.format(goalKg)} kg` : ""}. That took real, steady effort, so be proud of it.`);
+      }
+    }
+    cheer.push(wins.length >= 3 ? "This was a strong week. Keep the same routine and let the weeks stack up."
+      : wins.length >= 1 ? "There's real progress here. Pick one thing from the focus list and make it this week's win."
+      : "This week was tough, and that's normal. One good day starts the next good week.");
+    cheer.push("Consistency beats perfection: you don't need a perfect week, just more good days than last week.");
+
+    const head = make("div", "sum-head");
+    head.append(make("div", "hero-kicker", "Your week"),
+      make("div", "sum-range", `${shortDate(ymd(addDays(today, -6)))} – ${shortDate(t)}, compared with the 7 days before`));
+    box.append(head);
+    const section = (title, icon, items, cls) => {
+      if (!items.length) return;
+      const s = make("div", "sum-sec " + cls);
+      s.append(make("h3", null, `${icon} ${title}`));
+      const ul = make("ul");
+      for (const it of items) ul.append(make("li", null, it));
+      s.append(ul); box.append(s);
+    };
+    section("Wins", "✅", wins, "wins");
+    section("Focus for next week", "🎯", focus, "focus");
+    section("Keep going", "💪", cheer, "cheer");
+  }
+
+  // ---------- trends and summaries
+  function enrich() {
+    const w = allRows.filter((r) => r.weight != null);
+    for (const r of w) {
+      const from = ymd(addDays(parseDay(r.date), -6));
+      r.weight7 = avg(w.filter((x) => x.date >= from && x.date <= r.date).map((x) => x.weight));
+    }
+    for (const r of allRows) if (r.leanKg != null && r.fatKg != null) r.compTotal = r.leanKg + r.fatKg;
+  }
+  function weightRate() {   // kg lost per week over about 4 weeks of the 7-day average; negative means gaining
+    const w = allRows.filter((r) => r.weight7 != null);
+    if (w.length < 2) return null;
+    const last = w.at(-1), lastD = parseDay(last.date);
+    const old = [...w].reverse().find((r) => r.date <= ymd(addDays(lastD, -28)) && r.date >= ymd(addDays(lastD, -42)));
+    if (!old) return null;
+    return (old.weight7 - last.weight7) / ((lastD - parseDay(old.date)) / 6048e5);
+  }
+  function etaText(kgToGo, rate) {
+    const weeks = Math.max(0, kgToGo / rate);
+    return new Date(Date.now() + weeks * 6048e5).toLocaleDateString("en", { month: "short", year: "numeric" });
+  }
+  const monday = (d) => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+  function weeklySeries() {
+    const n = Math.max(2, Math.ceil(range / 7)), start0 = monday(new Date()), out = [];
+    for (let i = n - 1; i >= 0; i--) out.push({ date: ymd(addDays(start0, -7 * i)), mins: null, count: 0 });
+    const idx = Object.fromEntries(out.map((w, i) => [w.date, i]));
+    for (const wk of payload.workouts || []) {
+      if (!wk.date || !wk.seconds) continue;
+      const k = ymd(monday(parseDay(wk.date)));
+      if (!(k in idx)) continue;
+      const row = out[idx[k]];
+      row.mins = (row.mins || 0) + wk.seconds / 60; row.count++;
+    }
+    return out;
+  }
+  function clockH(t) { return t ? ((Number(t.slice(0, 2)) + 24 - 18) % 24) + Number(t.slice(3, 5)) / 60 : null; }   // hours after 6 pm
+  function clock(v) { const m = Math.round(((v + 18) % 24) * 60) % 1440; return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; }
+  function paceFmt(v) { const secs = Math.round(v * 60); return `${Math.floor(secs / 60)}:${pad(secs % 60)} /km`; }
+  function sleepStats() {
+    const zl = $("z-sleeptime"); if (!zl) return;
+    const n = allRows.filter((r) => r.bedH != null && r.sleepH != null).slice(-7);
+    zl.hidden = !n.length;
+    if (!n.length) return;
+    const beds = n.map((r) => r.bedH), spread = Math.max(...beds) - Math.min(...beds);
+    zl.textContent = `Last ${n.length} nights: ${fmt1.format(avg(n.map((r) => r.sleepH)))} h average vs a 7 h target · usual bedtime ${clock(avg(beds))}, wake ${clock(avg(n.map((r) => r.wakeH)))} · bedtime varies by ${Math.floor(spread)} h ${pad(Math.round((spread % 1) * 60))} min`;
+  }
+  function runStats() {
+    const zl = $("z-pace"); if (!zl) return;
+    const runs = allRows.filter((r) => r.runKm != null);
+    zl.hidden = !runs.length;
+    if (!runs.length) return;
+    const longest = runs.reduce((a, r) => (r.runKm > a.runKm ? r : a));
+    zl.textContent = `${runs.length} run days · longest ${fmt1.format(longest.runKm)} km on ${shortDate(longest.date)} · latest ${paceFmt(runs.at(-1).runPace)}`;
+  }
+  function renderWeekly() {
+    const box = $("weekly"); box.replaceChildren();
+    const today = new Date(), t = todayStr();
+    const days = (a, b) => allRows.filter((r) => r.date >= ymd(addDays(today, -b)) && r.date <= ymd(addDays(today, -a)));
+    const wks = (a, b) => (payload.workouts || []).filter((w) => w.date >= ymd(addDays(today, -b)) && w.date <= ymd(addDays(today, -a)));
+    const cur = days(0, 6), prev = days(7, 13), wc = wks(0, 6), wp = wks(7, 13);
+    const mins = (list) => list.reduce((a, w) => a + (w.seconds || 0) / 60, 0);
+    const items = [
+      [{ label: "Weight", icon: "⚖️", unit: "kg", better: "down", digits: 1 }, avg(cur.map((r) => r.weight)), avg(prev.map((r) => r.weight))],
+      [{ label: "Steps a day", icon: "👟", better: "up", digits: 0 }, avg(cur.filter((r) => r.date !== t).map((r) => r.steps)), avg(prev.map((r) => r.steps))],
+      [{ label: "Sleep a night", icon: "😴", unit: "h", better: "up", digits: 1 }, avg(cur.map((r) => r.sleepH)), avg(prev.map((r) => r.sleepH))],
+      [{ label: "Workouts", icon: "🏃", better: "up", digits: 0 }, wc.length, wp.length],
+      [{ label: "Workout time", icon: "⏱️", unit: "min", better: "up", digits: 0 }, mins(wc), mins(wp)],
+    ];
+    for (const [m, c, p] of items) {
+      if (c == null) continue;
+      box.append(tile(m, fmtN(c, m.digits), p != null ? `Last week ${fmtN(p, m.digits)}` : "No data last week", p ? deltaChip(m, c, p, "last week") : null));
+    }
+    const rate = weightRate(), goalKg = payload?.profile?.goalKg, nowKg = allRows.filter((r) => r.weight7 != null).at(-1)?.weight7;
+    if (rate != null) {
+      const losing = rate > 0.05, gaining = rate < -0.05;
+      const note = losing && goalKg && nowKg ? `Losing. ${fmtInt.format(goalKg)} kg around ${etaText(nowKg - goalKg, rate)}` : gaining ? "Gaining over the last 4 weeks" : "Holding steady over the last 4 weeks";
+      const st = make("div", "status"), i = make("i", null, losing ? "✓" : gaining ? "▲" : "■");
+      const s = losing ? "good" : gaining ? "bad" : "warn";
+      i.style.color = `var(${STATUS[s].color})`; st.append(i, losing ? "On track" : gaining ? "Off track" : "Flat");
+      box.append(tile({ label: "Weight trend", icon: "📉", unit: "kg/week" }, `${rate >= 0 ? "−" : "+"}${fmt1.format(Math.abs(rate))}`, note, null, st, s));
+    }
   }
 
   function ring(label, icon, value, max, text, zones) {
@@ -659,7 +833,8 @@
     if (weighed.length && goalKg) {
       const start = weighed[0].weight, nowKg = weighed.at(-1).weight;
       const pct = Math.max(0, Math.min(100, ((start - nowKg) / (start - goalKg)) * 100));
-      const weeks = Math.max(0, (nowKg - goalKg) / 0.5);
+      const rate = weightRate(), useRate = rate != null && rate > 0.05, pace = useRate ? rate : 0.5;
+      const weeks = Math.max(0, (nowKg - goalKg) / pace);
       const eta = new Date(Date.now() + weeks * 7 * 864e5).toLocaleDateString("en", { month: "short", year: "numeric" });
       left.append(make("div", "hero-kicker", "Your weight goal"));
       const big = make("div", "hero-big", fmt1.format(nowKg)); big.append(make("small", null, ` kg, aiming for ${fmtInt.format(goalKg)} kg`));
@@ -668,7 +843,7 @@
       const ends = make("div", "hero-ends");
       ends.append(make("span", null, `${fmt1.format(start)} kg start`), make("span", null, `${fmtInt.format(pct)}% there`), make("span", null, `${fmtInt.format(goalKg)} kg goal`));
       left.append(ends);
-      left.append(make("div", "hero-note", `${fmt1.format(start - nowKg)} kg lost, ${fmt1.format(nowKg - goalKg)} kg to go, about ${eta} at 0.5 kg a week`));
+      left.append(make("div", "hero-note", `${fmt1.format(start - nowKg)} kg lost, ${fmt1.format(nowKg - goalKg)} kg to go, about ${eta} at ${useRate ? "your recent pace of " + fmt1.format(rate) : "0.5"} kg a week`));
     } else if (weighed.length) {
       left.append(make("div", "hero-kicker", "Your weight"));
       const big = make("div", "hero-big", fmt1.format(weighed.at(-1).weight)); big.append(make("small", null, " kg"));
@@ -686,15 +861,20 @@
 
   const CHARTS = [
     { id: "weight", title: "Weight", desc: "Kilograms, morning reading. Zones use body fat at your current lean mass, not BMI", key: "weight", unit: "kg", digits: 1, color: "--s1" },
+    { id: "wtrend", title: "Weight trend", desc: "7-day average of your morning weigh-ins, which smooths out daily swings", key: "weight7", zkey: "weight", unit: "kg", digits: 1, color: "--s1" },
+    { id: "comp", title: "Lean vs fat mass", desc: "Your weight split into lean mass and fat mass, from your scale", key: "compTotal", unit: "kg", digits: 1, color: "--s1", bars: true, stack: [["leanKg", "Lean mass", "--s1"], ["fatKg", "Fat mass", "--s7"]] },
     { id: "sleep", title: "Total sleep", desc: "Hours asleep, by the day you woke up", key: "sleepH", unit: "h", digits: 1, color: "--s1" },
     { id: "stages", title: "Sleep stages", desc: "Your last 7 recorded nights", custom: true },
+    { id: "sleeptime", title: "Bedtime and wake time", desc: "Each bar runs from bedtime (bottom) to wake time (top), coloured by how long you slept", key: "bedH", span: ["bedH", "wakeH"], unit: "", digits: 1, color: "--s1" },
     { id: "rhr", title: "Resting heart rate", desc: "Likely reads high, since your daily lows are well below it", key: "rhr", unit: "bpm", digits: 0, color: "--s2" },
     { id: "low", title: "Lowest heart rate of the day", desc: "A steadier guide to your resting level for now", key: "hrLow", unit: "bpm", digits: 0, color: "--s2" },
     { id: "steps", title: "Daily steps", desc: "Samsung Health count, which avoids double counting. The line is your goal.", key: "steps", unit: "", digits: 0, color: "--s3", bars: true },
     { id: "vo2", title: "VO₂ max", desc: "ml/kg/min, a watch estimate", key: "vo2", unit: "", digits: 1, color: "--s3" },
     { id: "walk", title: "Walking heart rate", desc: "Average across each day's recorded walks", key: "walkHr", unit: "bpm", digits: 0, color: "--s2" },
+    { id: "train", title: "Workouts per week", desc: "Total workout minutes each week, from your recorded sessions", key: "mins", weekly: true, unit: "min", digits: 0, color: "--s3", bars: true },
+    { id: "pace", title: "Run pace", desc: "Minutes per km on run and treadmill days. Lower is faster", key: "runPace", pace: true, unit: "", digits: 1, color: "--s3" },
     { id: "bmi", title: "BMI", desc: "Standard WHO zones. BMI can't tell muscle from fat, so your weight zones use body fat instead", key: "bmi", unit: "", digits: 1, color: "--s1", needsHeight: true },
-    { id: "kcal", title: "Daily calories burned", desc: "kcal, from Google Health: resting and active stacked", key: "totalKcal", unit: "kcal", digits: 0, color: "--s1", bars: true, stack: true },
+    { id: "kcal", title: "Daily calories burned", desc: "kcal, from Google Health: resting and active stacked", key: "totalKcal", unit: "kcal", digits: 0, color: "--s1", bars: true, stack: [["baseKcal", "Resting", "--s1"], ["activeKcal", "Active", "--s3"]] },
     { id: "active", title: "Active calories", desc: "kcal from movement above resting, from Google Health", key: "activeKcal", unit: "kcal", digits: 0, color: "--s3", bars: true },
     { id: "bmr", title: "BMR / resting calories", desc: "kcal a day: Google's total minus active, or a formula where that's missing", key: "bmr", unit: "kcal", digits: 0, color: "--s1" },
     { id: "bf", title: "Body fat", desc: "Percent, as estimated by your scale", key: "bodyFat", unit: "%", digits: 1, color: "--s7" },
@@ -728,22 +908,30 @@
     }
   }
   function drawDailyCharts() {
-    const s = daySeries();
+    const s = daySeries(), weeks = weeklySeries();
     renderStages();
     renderZoneKey();
     for (const c of CHARTS) {
       if (c.custom) continue;
-      const zones = c.stack ? null : zonesFor(c.key);
-      $("z-" + c.id).textContent = zoneText(zones, c.digits, c.unit === "%" ? "%" : c.unit);
-      $("z-" + c.id).hidden = !zones;
-      const fmt = (v) => `${fmtN(v, c.digits)}${c.unit ? (c.unit === "%" ? "%" : " " + c.unit) : ""}`;
-      chart($("c-" + c.id), s, {
-        key: c.key, color: css(c.color), bars: c.bars, fmt, compact: c.bars, zones,
-        goal: c.key === "steps" ? goal : null, zero: !!(c.bars || c.key === "sleepH"),
-        stack: c.stack ? [{ key: "baseKcal", label: "Resting", color: css("--s1") }, { key: "activeKcal", label: "Active", color: css("--s3") }] : null,
+      const zones = c.stack || c.span || c.weekly ? null : zonesFor(c.zkey || c.key);
+      const zl = $("z-" + c.id);
+      zl.textContent = zoneText(zones, c.digits, c.unit === "%" ? "%" : c.unit);
+      zl.hidden = !zones;
+      const fmt = c.pace ? paceFmt : c.span ? (v) => "Bed " + clock(v)
+        : (v) => `${fmtN(v, c.digits)}${c.unit ? (c.unit === "%" ? "%" : " " + c.unit) : ""}`;
+      chart($("c-" + c.id), c.weekly ? weeks : s, {
+        key: c.key, color: css(c.color), bars: c.bars || !!c.span, fmt, compact: c.bars, zones,
+        goal: c.key === "steps" ? goal : null, zero: !!((c.bars && !c.span) || c.key === "sleepH"),
+        stack: c.stack ? c.stack.map(([key, label, col]) => ({ key, label, color: css(col) })) : null,
+        span: c.span || null, tickFmt: c.span ? clock : null,
+        dateLabel: c.weekly ? (d) => "Week of " + shortDate(d) : null,
+        tipExtra: c.weekly ? (r) => (r.count ? [`${r.count} workout${r.count === 1 ? "" : "s"}`] : [])
+          : c.span ? (r) => [r.wakeH != null ? `Woke ${clock(r.wakeH)}` : "", r.sleepH != null ? `${fmt1.format(r.sleepH)} h asleep` : ""] : null,
         empty: c.needsHeight && !heightCm ? "Enter your height to see BMI" : "No data for this period",
       });
     }
+    sleepStats();
+    runStats();
   }
 
   const STAGES = [["DEEP", "Deep", "--s7"], ["LIGHT", "Light", "--s1"], ["REM", "REM", "--s3"], ["ASLEEP", "Asleep, no stages recorded", "--s1"], ["AWAKE", "Awake", "--s4"]];
@@ -1013,7 +1201,7 @@
   function chart(box, data, o) {
     box.innerHTML = "";
     const val = (r) => r[o.key];
-    const vals = data.map(val).filter((v) => v != null);
+    const vals = (o.span ? data.flatMap((r) => o.span.map((k) => r[k])) : data.map(val)).filter((v) => v != null);
     if (!vals.length) { box.append(make("div", "empty", o.empty)); return; }
     const W = Math.max(280, box.clientWidth), H = 190, padT = 18, padB = 22;
     let lo = Math.min(...vals), hi = Math.max(...vals);
@@ -1023,7 +1211,7 @@
     lo = ticks[0]; hi = ticks.at(-1);
     const step = ticks[1] - ticks[0];
     const dec = Number.isInteger(step) ? 0 : Number.isInteger(+(step * 10).toFixed(6)) ? 1 : 2;
-    const tickFmt = (v) => (o.compact && hi >= 10000 ? fmtCompact.format(v)
+    const tickFmt = (v) => o.tickFmt ? o.tickFmt(v) : (o.compact && hi >= 10000 ? fmtCompact.format(v)
       : v.toLocaleString("en", { minimumFractionDigits: dec, maximumFractionDigits: dec }));
 
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, box);
@@ -1065,7 +1253,15 @@
       });
     }
 
-    if (o.stack) {
+    if (o.span) {
+      const slot = iw / data.length, bw = Math.max(1.5, Math.min(14, slot - Math.min(2, slot * 0.25)));
+      data.forEach((r, i) => {
+        const a = r[o.span[0]], b = r[o.span[1]];
+        if (a == null || b == null) return;
+        el("rect", { x: x(i) - bw / 2, y: y(b), width: bw, height: Math.max(2, y(a) - y(b)), rx: Math.min(4, bw / 2),
+          fill: zoneColor(zonesFor("sleepH"), r.sleepH) || o.color }, svg);
+      });
+    } else if (o.stack) {
       const slot = iw / data.length, bw = Math.max(1.5, Math.min(24, slot - Math.min(2, slot * 0.25)));
       data.forEach((r, i) => {
         if (val(r) == null) return;
@@ -1115,6 +1311,14 @@
       el("text", { class: "endlabel", x: W - padR, y: y(o.goal) - 5, "text-anchor": "end" }, svg).textContent = `Goal ${fmtInt.format(o.goal)}`;
     }
 
+    // legend for stacked charts, so colour is never the only way to tell the parts apart
+    if (o.stack) {
+      const k = make("div", "key");
+      for (const s of o.stack) { const e = make("span"), i = make("i"); i.style.background = s.color; e.append(i, s.label); k.append(e); }
+      box.after(k);
+      box.parentElement.querySelectorAll(":scope > .key").forEach((e) => e !== k && e.remove());
+    }
+
     // tooltip
     const tip = make("div", "tip"); box.append(tip);
     const hl = el("line", { y1: padT, y2: padT + ih, stroke: css("--axis"), "stroke-width": 1, visibility: "hidden" }, svg);
@@ -1126,8 +1330,9 @@
       const i = Math.max(0, Math.min(data.length - 1, Math.floor((px - padL) / (iw / data.length))));
       const r = data[i], v = r[o.key];
       const zs = zoneOf(o.zones, v);
-      tip.replaceChildren(make("div", "d", longDate(r.date)), make("div", null, v != null ? o.fmt(v) + (zs ? ` · ${STATUS[zs].label}` : "") : "No data"));
+      tip.replaceChildren(make("div", "d", (o.dateLabel || longDate)(r.date)), make("div", null, v != null ? o.fmt(v) + (zs ? ` · ${STATUS[zs].label}` : "") : "No data"));
       if (o.stack && v != null) for (const s of o.stack) if (r[s.key] != null) tip.append(make("div", "d", `${s.label}: ${o.fmt(r[s.key])}`));
+      if (o.tipExtra && v != null) for (const t of o.tipExtra(r)) if (t) tip.append(make("div", "d", t));
       hl.setAttribute("x1", x(i)); hl.setAttribute("x2", x(i)); hl.setAttribute("visibility", "visible");
       if (v != null && !o.bars) { dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(v)); dot.setAttribute("visibility", "visible"); }
       else dot.setAttribute("visibility", "hidden");

@@ -276,13 +276,18 @@ def sleep_by_day(points: list) -> dict:
         day = local_time(iv["endTime"], iv.get("endUtcOffset")).strftime("%Y-%m-%d")
         s = per.setdefault((day, source_rank(p)), {"minutes": 0, "stages": {}})
         s["minutes"] += int(summary.get("minutesAsleep") or 0)
+        asleep = int(summary.get("minutesAsleep") or 0)
+        if asleep > s.get("_best", -1):      # bedtime and wake time of the main sleep that day
+            s["_best"] = asleep
+            s["start"] = local_time(iv["startTime"], iv.get("startUtcOffset")).strftime("%H:%M") if iv.get("startTime") else None
+            s["end"] = local_time(iv["endTime"], iv.get("endUtcOffset")).strftime("%H:%M")
         for st in summary.get("stagesSummary") or []:
             name = st.get("type", "ASLEEP")
             s["stages"][name] = s["stages"].get(name, 0) + int(st.get("minutes") or 0)
     out = {}
     for (day, rank), s in sorted(per.items(), key=lambda kv: kv[0][1]):
         if s["minutes"]:
-            out[day] = s       # sorted by rank, so the preferred app is written last
+            out[day] = {k: v for k, v in s.items() if k != "_best"}       # sorted by rank, so the preferred app is written last
     return out
 
 
