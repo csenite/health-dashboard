@@ -225,7 +225,7 @@
     </div>
     <div class="head-right">
     <!-- Version: a very big update adds 0.1, a minor update adds 0.0.1 -->
-    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge">v1.3.2 · 11 Nov 2026</div>
+    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019">v1.3.3 · 12 Nov 2026</div>
     <div class="controls">
       <div class="seg" id="theme" role="group" aria-label="Theme">
         <button data-theme-set="light">Light</button>
@@ -414,10 +414,16 @@
     }
     for (const [day, a] of Object.entries(runs)) { const r = (out[day] ||= { date: day }); r.runPace = a.secs / 60 / a.km; r.runKm = a.km; }
 
-    // Weigh-ins entered by hand, kept in the encrypted profile. Real readings win on the same day.
-    for (const [day, kg] of Object.entries(data.profile?.manualWeights || {})) {
+    // Weigh-ins imported or entered by hand, kept in the encrypted profile. Real synced readings win on the same day.
+    // weightHistory keys are YYMMDD; values are kg or [kg, body fat %].
+    const imported = { ...(data.profile?.manualWeights || {}) };
+    for (const [k, v] of Object.entries(data.profile?.weightHistory || {}))
+      imported[`20${k.slice(0, 2)}-${k.slice(2, 4)}-${k.slice(4, 6)}`] = v;
+    for (const [day, v] of Object.entries(imported)) {
+      const [kg, bf] = Array.isArray(v) ? v : [v, null];
       const r = (out[day] ||= { date: day });
-      if (r.weight == null) r.weight = n(kg);
+      if (r.weight == null) { r.weight = n(kg); if (r.bodyFat == null && bf != null) r.bodyFat = n(bf); }
+      if (r.weight != null && r.bodyFat != null && r.fatKg == null) { r.fatKg = (r.weight * r.bodyFat) / 100; r.leanKg = r.weight - r.fatKg; }
     }
 
     // Resting calories: Google's total minus active, then the scale, then Mifflin-St Jeor
@@ -755,10 +761,10 @@
     const weighed = allRows.filter((r) => r.weight != null), goalKg = payload?.profile?.goalKg;
     const cheer = [];
     if (weighed.length > 1) {
-      const start = weighed[0], lost = start.weight - weighed.at(-1).weight;
+      const start = journeyStart(), lost = start.weight - weighed.at(-1).weight;
       if (lost > 1) {
         const pct = goalKg ? Math.round((lost / (start.weight - goalKg)) * 100) : null;
-        cheer.push(`You've lost ${fmt1.format(lost)} kg since ${parseDay(start.date).toLocaleDateString("en", { month: "long" })}${pct ? `, which is ${pct}% of the way to ${fmtInt.format(goalKg)} kg` : ""}. That took real, steady effort, so be proud of it.`);
+        cheer.push(`You've lost ${fmt1.format(lost)} kg since your peak in ${parseDay(start.date).toLocaleDateString("en", { month: "long", year: "numeric" })}${pct ? `, which is ${pct}% of the way to ${fmtInt.format(goalKg)} kg` : ""}. That took real, steady effort, so be proud of it.`);
       }
     }
     cheer.push(wins.length >= 3 ? "This was a strong week. Keep the same routine and let the weeks stack up."
@@ -784,6 +790,11 @@
   }
 
   // ---------- trends and summaries
+  function journeyStart() {   // the starting point for goal progress: your heaviest weigh-in in the last 2 years
+    const since = ymd(addDays(new Date(), -730));
+    const w = allRows.filter((r) => r.weight != null && r.date >= since);
+    return w.reduce((a, r) => (r.weight > a.weight ? r : a), w[0]);
+  }
   function enrich() {
     const w = allRows.filter((r) => r.weight != null);
     for (const r of w) {
@@ -887,7 +898,7 @@
     const weighed = allRows.filter((r) => r.weight != null), goalKg = payload?.profile?.goalKg;
     const left = make("div", "hero-goal");
     if (weighed.length && goalKg) {
-      const start = weighed[0].weight, nowKg = weighed.at(-1).weight;
+      const start = journeyStart().weight, nowKg = weighed.at(-1).weight;
       const pct = Math.max(0, Math.min(100, ((start - nowKg) / (start - goalKg)) * 100));
       const rate = weightRate(), useRate = rate != null && rate > 0.05, pace = useRate ? rate : 0.5;
       const weeks = Math.max(0, (nowKg - goalKg) / pace);
@@ -1164,7 +1175,9 @@
   // ---------- Recomposition Signal tab
   const MIN_READINGS = 5, STEADY_KG = 0.5;
   function renderRecomp() {
-    const body = allRows.filter((r) => r.fatKg != null);
+    // compare from the month of your heaviest weigh-in in the last 2 years, so old history doesn't swamp the signal
+    const js = journeyStart(), from = js ? js.date.slice(0, 7) + "-01" : "";
+    const body = allRows.filter((r) => r.fatKg != null && r.date >= from);
     const months = monthsOf(body);
     const usable = Object.keys(months).sort().filter((m) => months[m].length >= MIN_READINGS);
     const tiles = $("recompTiles"); tiles.replaceChildren();
