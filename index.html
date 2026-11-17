@@ -171,7 +171,8 @@
   .run-card .stats b { display: block; font-size: clamp(13px, 3.9vw, 17px); font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
   .map { position: relative; overflow: hidden; background: var(--wash); }
   .map img { position: absolute; width: 256px; height: 256px; max-width: none; user-select: none; -webkit-user-drag: none; }
-  .map.dark img { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9); }
+  .map img { filter: grayscale(1) contrast(.9) brightness(1.05); }
+  .map.dark img { filter: grayscale(1) invert(1) brightness(.85) contrast(.9); }
   .map svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
   .map .attr { position: absolute; right: 4px; bottom: 2px; font-size: 9px; color: #555; background: rgba(255,255,255,.7); padding: 0 3px; border-radius: 3px; }
   .run-card .map .attr { top: 3px; bottom: auto; right: 5px; font-size: 7.5px; }
@@ -257,7 +258,7 @@
     </div>
     <div class="head-right">
     <!-- Version: a very big update adds 0.1, a minor update adds 0.0.1 -->
-    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019 · 1.4.0 Runs tab with GPS routes, track names and heart rate · 1.4.1 Google Fit run history, pace, cadence, 1 km laps and VO₂ max on the Runs tab · 1.5.0 Runs gallery with map thumbnails, runs and jogs only, Track_001 names · 1.5.1 OpenStreetMap maps">v1.5.1 · 17 Nov 2026</div>
+    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019 · 1.4.0 Runs tab with GPS routes, track names and heart rate · 1.4.1 Google Fit run history, pace, cadence, 1 km laps and VO₂ max on the Runs tab · 1.5.0 Runs gallery with map thumbnails, runs and jogs only, Track_001 names · 1.5.1 OpenStreetMap maps · 1.5.2 grey maps, blue trail where heart rate or pace is missing">v1.5.2 · 17 Nov 2026</div>
     <div class="controls">
       <div class="seg" id="theme" role="group" aria-label="Theme">
         <button data-theme-set="light">Light</button>
@@ -1464,7 +1465,7 @@
       }
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, "aria-hidden": "true" }, box);
     const P = (p) => { const [a, b] = ll(p), w = world(a, b, z); return [w[0] - left, w[1] - top]; };
-    const brand = "#fc4c02";
+    const brand = "#fc4c02", noData = "#2f7de1";   // blue = sections with no heart rate or pace (GPS gaps)
     let prev = null, last = null;
     for (const p of r.track) {
       if (p === null) { prev = null; continue; }
@@ -1472,11 +1473,11 @@
       const [x2, y2] = P(p);
       if (prev) {
         const [x1, y1] = P(prev);
-        const color = o.brand ? brand : (prev[3] ?? p[3]) != null ? css(hrBand(prev[3] ?? p[3]).color) : css("--axis");
+        const color = o.brand ? brand : (prev[3] ?? p[3]) != null ? css(hrBand(prev[3] ?? p[3]).color) : noData;
         el("line", { x1, y1, x2, y2, stroke: color, "stroke-width": o.brand ? 3 : 4, "stroke-linecap": "round" }, svg);
       } else if (last) {
         const [x1, y1] = P(last);
-        el("line", { x1, y1, x2, y2, stroke: o.brand ? brand : css("--axis"), "stroke-width": 1.5, "stroke-dasharray": "3 4", opacity: 0.8 }, svg);
+        el("line", { x1, y1, x2, y2, stroke: noData, "stroke-width": o.brand ? 2 : 2.5, "stroke-dasharray": "3 4", opacity: 0.9 }, svg);
       }
       prev = p; last = p;
     }
@@ -1497,16 +1498,16 @@
     const ox = (W - (maxX - minX) * sc) / 2, oy = (H - (maxY - minY) * sc) / 2;
     const X = (p) => ox + (p[0] - minX) * sc, Y = (p) => H - oy - (p[1] - minY) * sc;
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Route map", style: `height:${H}px` }, box);
-    // dashed grey across GPS gaps, so you can still follow the order
+    // dashed blue across GPS gaps, so you can still follow the order
     let prev = null, last = null;
     for (const p of r.track) {
       if (p === null) { prev = null; continue; }
       if (p[0] == null) continue;
       if (prev) {
-        el("line", { x1: X(prev), y1: Y(prev), x2: X(p), y2: Y(p), stroke: (prev[3] ?? p[3]) != null ? css(hrBand(prev[3] ?? p[3]).color) : css("--axis"),
+        el("line", { x1: X(prev), y1: Y(prev), x2: X(p), y2: Y(p), stroke: (prev[3] ?? p[3]) != null ? css(hrBand(prev[3] ?? p[3]).color) : "#2f7de1",
           "stroke-width": 3.2, "stroke-linecap": "round", opacity: 0.9 }, svg);
-      } else if (last) {   // dashed grey across a GPS gap, so the order stays readable
-        el("line", { x1: X(last), y1: Y(last), x2: X(p), y2: Y(p), stroke: css("--axis"), "stroke-width": 1.2, "stroke-dasharray": "3 4", opacity: 0.7 }, svg);
+      } else if (last) {   // dashed blue across a GPS gap, so the order stays readable
+        el("line", { x1: X(last), y1: Y(last), x2: X(p), y2: Y(p), stroke: "#2f7de1", "stroke-width": 1.5, "stroke-dasharray": "3 4", opacity: 0.7 }, svg);
       }
       prev = p; last = p;
     }
