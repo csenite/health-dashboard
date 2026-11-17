@@ -334,7 +334,7 @@
       <div class="tiles" id="runTiles" style="margin-bottom:10px"></div>
       <div class="run-grid">
         <div class="card"><h3 style="font-size:14px;margin:0">Route</h3><div class="sub" style="margin:1px 0 8px">Coloured by heart rate. Dashed grey lines bridge spots where the phone lost GPS.</div><div class="run-map" id="runMap"></div></div>
-        <div class="card"><h3 style="font-size:14px;margin:0">Heart rate</h3><div class="sub" style="margin:1px 0 8px" id="runHrNote"></div><div class="run-hr" id="runHr"></div>
+        <div class="card" id="runHrCard"><h3 style="font-size:14px;margin:0">Heart rate</h3><div class="sub" style="margin:1px 0 8px" id="runHrNote"></div><div class="run-hr" id="runHr"></div>
           <div class="hr-bar" id="runBar"></div><div class="key" id="runKey" style="margin-top:4px"></div></div>
         <div class="card"><h3 style="font-size:14px;margin:0">1 km laps</h3><div class="sub" style="margin:1px 0 8px">Time for each kilometre. Shorter bars are faster.</div>
           <div class="table-wrap"><table><thead><tr><th>Km</th><th class="num">Lap time</th><th class="num">Pace</th><th class="num">Avg HR</th><th style="width:40%"></th></tr></thead><tbody id="runLaps"></tbody></table></div></div>
@@ -1285,6 +1285,7 @@
   let runSel = null;
   const fmt2 = new Intl.NumberFormat("en", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
   const mmss = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s2 = pad(sec % 60); return h ? `${h}:${pad(m)}:${s2}` : `${m}:${s2}`; };
+  const runDate = (d) => longDate(d) + (d.slice(0, 4) !== String(new Date().getFullYear()) ? ` ${d.slice(0, 4)}` : "");
   function vo2Near(date) {   // the latest VO2 max reading on or up to 14 days before the run
     const lo = ymd(new Date(parseDay(date).getTime() - 14 * 864e5));
     const hit = allRows.filter((x) => x.vo2 != null && x.date <= date && x.date >= lo).at(-1);
@@ -1321,13 +1322,13 @@
     if (!list.find((r) => r.id === runSel)) runSel = list[0].id;
     for (const r of list) {
       const b = make("button"); b.type = "button"; b.setAttribute("aria-pressed", String(r.id === runSel));
-      b.append(make("b", null, trackName(r)), document.createTextNode(`${longDate(r.date)} · ${r.id.slice(11)}`));
+      b.append(make("b", null, trackName(r)), document.createTextNode(`${runDate(r.date)} · ${r.id.slice(11)}`));
       b.onclick = () => { runSel = r.id; renderRuns(); };
       pick.append(b);
     }
     const r = list.find((x) => x.id === runSel);
     $("runName").textContent = trackName(r);
-    $("runWhen").textContent = `${titleCase(r.type)} · ${longDate(r.date)}, ${r.id.slice(11)}`;
+    $("runWhen").textContent = `${r.type === "WALK_RUN" ? "Walk/run" : titleCase(r.type)} · ${longDate(r.date)}, ${r.id.slice(11)}${r.source === "google-fit" ? " · from Google Fit" : ""}`;
     $("runRename").onclick = () => {
       const v = prompt("Name this track (all runs that start here share it):", trackName(r));
       if (v == null) return;
@@ -1344,23 +1345,25 @@
       tile({ label: "Avg pace", icon: "🏃", unit: "/km" }, r.paceS ? mmss(r.paceS) : "—"),
       tile({ label: "Cadence", icon: "👟", unit: "spm" }, r.cadence ? String(r.cadence) : "—", r.cadence ? (r.cadence >= 150 ? "Running rhythm" : r.cadence >= 130 ? "Jog/walk mix" : "Mostly walking") : "Not in this file"),
       tile({ label: "Avg heart rate", icon: "❤️", unit: "bpm" }, r.avgHr != null ? String(r.avgHr) : "—", r.maxHr != null ? `Max ${r.maxHr} bpm` : ""),
-      tile({ label: "Time at 150+", icon: "🔥", unit: "min" }, String(Math.round(hard / 60)), tracked ? `${Math.round((hard / tracked) * 100)}% of the session` : "No heart rate"),
+      tile({ label: "Time at 150+", icon: "🔥", unit: tracked ? "min" : "" }, tracked ? String(Math.round(hard / 60)) : "—", tracked ? `${Math.round((hard / tracked) * 100)}% of the session` : "No heart rate"),
       tile({ label: "VO₂ max", icon: "🫁" }, vo2 ? fmt1.format(vo2.v) : "—", vo2 ? `Reading from ${longDate(vo2.date)}` : "No reading near this run"),
       tile({ label: "Climb", icon: "⛰️", unit: "m" }, fmtInt.format(r.climbM)),
     );
     drawRouteMap($("runMap"), r);
-    drawRunLine($("runHr"), r, { i: 3, lo: 90, hi: 180, ticks: [100, 120, 140, 150, 160, 180], bands: true, color: "--bad", unit: "bpm" });
+    $("runHrCard").hidden = !tracked;
+    if (tracked) drawRunLine($("runHr"), r, { i: 3, lo: 90, hi: 180, ticks: [100, 120, 140, 150, 160, 180], bands: true, color: "--bad", unit: "bpm" });
     const hasCad = r.track.some((p) => p && p[4]);
     $("runCadCard").hidden = !hasCad;
     if (hasCad) drawRunLine($("runCad"), r, { i: 4, lo: 60, hi: 200, ticks: [80, 110, 130, 150, 170, 190], color: "--s1", unit: "spm",
       guides: [{ lo: 150, hi: 200, color: "--st-good" }] });
     const laps = $("runLaps"); laps.replaceChildren();
-    const sp = r.splits || [], full = sp.filter((x) => !x.part), best = full.length ? Math.min(...full.map((x) => x.s)) : null, worst = Math.max(1, ...sp.map((x) => (x.part ? (x.s * 1000) / x.part : x.s)));
+    const sp = r.splits || [], full = sp.filter((x) => !x.part && x.s >= 180), best = full.length ? Math.min(...full.map((x) => x.s)) : null, worst = Math.max(1, ...sp.map((x) => (x.part ? (x.s * 1000) / x.part : x.s)));
     if (!sp.length) { const tr = make("tr"), td = make("td", null, "Not enough distance for a full kilometre."); td.colSpan = 5; tr.append(td); laps.append(tr); }
     for (const x of sp) {
       const pace = x.part ? (x.s * 1000) / x.part : x.s, tr = make("tr");
-      tr.append(make("td", null, x.part ? `${fmt2.format(x.km)} (last ${x.part} m)` : String(x.km)), make("td", "num", mmss(x.s)),
-        make("td", "num", `${mmss(pace)} /km`), make("td", "num", x.hr != null ? `${x.hr} bpm` : "—"));
+      const glitch = pace < 180;   // faster than 3:00/km on foot: the file's distance jumped, not you
+      tr.append(make("td", null, x.part ? `${fmt2.format(x.km)} (last ${x.part} m)` : String(x.km)), make("td", "num", glitch ? "—" : mmss(x.s)),
+        make("td", "num", glitch ? "data gap" : `${mmss(pace)} /km`), make("td", "num", x.hr != null ? `${x.hr} bpm` : "—"));
       const td = make("td"), bar = make("i");
       bar.style.cssText = `display:block;height:8px;border-radius:99px;width:${Math.max(4, (pace / worst) * 100)}%;background:${css(x.s === best && !x.part ? "--st-good" : "--s1")}`;
       td.append(bar); tr.append(td); laps.append(tr);
@@ -1379,10 +1382,10 @@
     const body = $("runRows"); body.replaceChildren();
     for (const x of list) {
       const tr = make("tr"); tr.style.cursor = "pointer"; tr.onclick = () => { runSel = x.id; renderRuns(); scrollTo({ top: 0, behavior: "smooth" }); };
-      tr.append(make("td", null, `${longDate(x.date)} · ${x.id.slice(11)}`), make("td", null, trackName(x)));
+      tr.append(make("td", null, `${runDate(x.date)} · ${x.id.slice(11)}`), make("td", null, trackName(x)));
       for (const v of [fmtDuration(x.activeSeconds || x.seconds), `${fmt2.format(x.km ?? x.gpsKm)} km`, x.paceS ? `${mmss(x.paceS)} /km` : "—",
         x.cadence ? `${x.cadence} spm` : "—", x.avgHr != null ? `${x.avgHr} bpm` : "—", x.maxHr != null ? `${x.maxHr} bpm` : "—",
-        `${Math.round((x.hrBands?.hard || 0) / 60)} min`, `${fmtInt.format(x.climbM)} m`]) tr.append(make("td", "num", v));
+        x.avgHr != null ? `${Math.round((x.hrBands?.hard || 0) / 60)} min` : "—", `${fmtInt.format(x.climbM)} m`]) tr.append(make("td", "num", v));
       body.append(tr);
     }
   }

@@ -51,8 +51,11 @@ def parse_gpx(text: str, tz: ZoneInfo) -> dict | None:
 def parse_tcx(text: str, tz: ZoneInfo) -> dict | None:
     sport = re.search(r'<Activity Sport="([^"]+)"', text)
     kind = (sport[1] if sport else "WORKOUT")
-    laps_m = [float(x) for x in re.findall(r"<Lap [^>]*>\s*<TotalTimeSeconds>[^<]*</TotalTimeSeconds>\s*<DistanceMeters>([^<]+)</DistanceMeters>", text)]
-    laps_s = [float(x) for x in re.findall(r"<Lap [^>]*>\s*<TotalTimeSeconds>([^<]+)</TotalTimeSeconds>", text)]
+    # lap totals sit before the track (Samsung) or after it (Google Fit), so read them with the tracks removed
+    outside = re.sub(r"<Track>.*?</Track>", "", text, flags=re.S)
+    laps = re.findall(r"<Lap\b.*?</Lap>", outside, re.S)
+    laps_m = [float(_tag(l, "DistanceMeters")) for l in laps if _tag(l, "DistanceMeters")]
+    laps_s = [float(_tag(l, "TotalTimeSeconds")) for l in laps if _tag(l, "TotalTimeSeconds")]
     samsung = "Samsung" in text[:3000]
     pts = []
     for b in TCX_TP.findall(text):
@@ -62,7 +65,7 @@ def parse_tcx(text: str, tz: ZoneInfo) -> dict | None:
         la, lo = _tag(b, "LatitudeDegrees"), _tag(b, "LongitudeDegrees")
         hr = re.search(r"<HeartRateBpm>\s*<Value>(\d+)</Value>", b)
         cad = _tag(b, "Cadence") or _tag(b, "ns3:RunCadence") or _tag(b, "RunCadence")
-        d = re.search(r"</Time>.*?<DistanceMeters>([^<]+)</DistanceMeters>", b, re.S)
+        d = re.search(r"<DistanceMeters>([^<]+)</DistanceMeters>", b)
         pts.append({"lat": float(la) if la else None, "lon": float(lo) if lo else None,
                     "ele": float(_tag(b, "AltitudeMeters")) if _tag(b, "AltitudeMeters") else None,
                     "t": _time(t), "hr": int(hr[1]) if hr and int(hr[1]) > 0 else None,
@@ -83,7 +86,7 @@ def build(pts, kind, tz, source, total_m=None, active_s=None) -> dict | None:
     total = (pts[-1]["t"] - t0).total_seconds()
     kind = kind.strip().upper().replace(" ", "_") or "WORKOUT"
 
-    # GPS distance and coverage
+    # GPS distance and coverage (a session with under 500 m of usable GPS has no route worth drawing)
     gps_m, covered = 0.0, 0.0
     for a, b in zip(geo, geo[1:]):
         secs = (b["t"] - a["t"]).total_seconds()
@@ -95,15 +98,21 @@ def build(pts, kind, tz, source, total_m=None, active_s=None) -> dict | None:
             if secs <= GAP_S:
                 covered += secs
 
+    if gps_m < 500:
+        return None
+
     # distance along the session, for laps: per-point watch distance if present, else GPS where it's
     # good and cadence (or the average speed) across gaps, scaled to the watch's total when known
     cum = [0.0]
     if sum(1 for p in pts if p.get("dist") is not None) > len(pts) * 0.8:
-        last = 0.0
+        # Google Fit splits a session into many short activities whose distance restarts at 0
+        last = pts[0].get("dist") or 0.0
         for p in pts[1:]:
-            last = p["dist"] if p.get("dist") is not None and p["dist"] >= last else last
-            cum.append(last)
-        cum = [c - (pts[0].get("dist") or 0) for c in cum]
+            d = p.get("dist")
+            if d is None:
+                cum.append(cum[-1]); continue
+            cum.append(cum[-1] + (d - last if d >= last else d))
+            last = d
     else:
         good_m = good_steps = 0.0
         seg = []
@@ -125,8 +134,8 @@ def build(pts, kind, tz, source, total_m=None, active_s=None) -> dict | None:
             if m is None:
                 m = steps * stride if steps and stride else (speed * secs if speed else 0.0)
             cum.append(cum[-1] + m)
-        if total_m and cum[-1] > 0:
-            cum = [c * total_m / cum[-1] for c in cum]
+    if total_m and cum[-1] > 0:   # the watch's own total wins; spread it over the session in proportion
+        cum = [c * total_m / cum[-1] for c in cum]
     dist_m = total_m or cum[-1] or gps_m
 
     # 1 km laps
@@ -143,9 +152,11 @@ def build(pts, kind, tz, source, total_m=None, active_s=None) -> dict | None:
             mark += 1000
             i0 = i
     rest = cum[-1] - (mark - 1000)
-    if rest >= 100:
+    moved = max((i for i in range(1, len(cum)) if cum[i] > cum[i - 1]), default=len(cum) - 1)
+    end_s = (pts[moved]["t"] - t0).total_seconds()   # when the distance last grew, not when recording stopped
+    if rest >= 100 and end_s > sum(s["s"] for s in splits):
         hr = [p["hr"] for p in pts[i0:] if p["hr"]]
-        splits.append({"km": round((mark - 1000 + rest) / 1000, 2), "s": round(total - sum(s["s"] for s in splits)),
+        splits.append({"km": round((mark - 1000 + rest) / 1000, 2), "s": round(end_s - sum(s["s"] for s in splits)),
                        "hr": round(sum(hr) / len(hr)) if hr else None, "part": round(rest)})
 
     # heart rate: time in each band, weighted by the seconds each reading covers (capped at a gap)
@@ -189,7 +200,7 @@ def build(pts, kind, tz, source, total_m=None, active_s=None) -> dict | None:
             last_t = s
         prev = p
 
-    moving = active_s or total
+    moving = active_s if active_s and active_s <= total * 1.05 else total
     return {
         "id": start.strftime("%Y-%m-%d %H:%M"),
         "date": start.strftime("%Y-%m-%d"),
@@ -232,8 +243,9 @@ def parse_takeout(data: bytes, tz: ZoneInfo, pattern=RUNS) -> list:
             r = parse_tcx(z.read(n).decode("utf-8", errors="replace"), tz)
             if r:
                 r["source"] = "google-fit"
-                if r["type"] in ("OTHER", "WORKOUT"):
-                    r["type"] = "RUNNING"
+                # the file name lists what the session held, e.g. "..._Walking,Running.tcx"
+                kinds = n.rsplit("_", 1)[-1][:-4].lower()
+                r["type"] = "RUNNING" if kinds == "running" else "WALK_RUN"
                 out.append(r)
     return out
 
