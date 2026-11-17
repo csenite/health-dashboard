@@ -171,8 +171,8 @@
   .run-card .stats b { display: block; font-size: clamp(13px, 3.9vw, 17px); font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
   .map { position: relative; overflow: hidden; background: var(--wash); }
   .map img { position: absolute; width: 256px; height: 256px; max-width: none; user-select: none; -webkit-user-drag: none; }
-  .map img { filter: grayscale(1) contrast(.9) brightness(1.05); }
-  .map.dark img { filter: grayscale(1) invert(1) brightness(.85) contrast(.9); }
+  .map img { filter: grayscale(1) contrast(.55) brightness(1.15); opacity: .85; }
+  .map.dark img { filter: grayscale(1) invert(1) contrast(.5) brightness(.75); opacity: .85; }
   .map svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
   .map .attr { position: absolute; right: 4px; bottom: 2px; font-size: 9px; color: #555; background: rgba(255,255,255,.7); padding: 0 3px; border-radius: 3px; }
   .run-card .map .attr { top: 3px; bottom: auto; right: 5px; font-size: 7.5px; }
@@ -258,7 +258,7 @@
     </div>
     <div class="head-right">
     <!-- Version: a very big update adds 0.1, a minor update adds 0.0.1 -->
-    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019 · 1.4.0 Runs tab with GPS routes, track names and heart rate · 1.4.1 Google Fit run history, pace, cadence, 1 km laps and VO₂ max on the Runs tab · 1.5.0 Runs gallery with map thumbnails, runs and jogs only, Track_001 names · 1.5.1 OpenStreetMap maps · 1.5.2 grey maps, blue trail where heart rate or pace is missing">v1.5.2 · 17 Nov 2026</div>
+    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019 · 1.4.0 Runs tab with GPS routes, track names and heart rate · 1.4.1 Google Fit run history, pace, cadence, 1 km laps and VO₂ max on the Runs tab · 1.5.0 Runs gallery with map thumbnails, runs and jogs only, Track_001 names · 1.5.1 OpenStreetMap maps · 1.5.2 grey maps, blue trail where heart rate or pace is missing · 1.5.3 softer map contrast">v1.5.3 · 17 Nov 2026</div>
     <div class="controls">
       <div class="seg" id="theme" role="group" aria-label="Theme">
         <button data-theme-set="light">Light</button>
