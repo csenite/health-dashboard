@@ -405,9 +405,9 @@ def fetch_google_health(days: dict, workouts: list, errors: dict):
 
 
 def prune_routes(routes: dict) -> dict:
-    """Keeps the newest 60 routes so the data file stays small."""
+    """Keeps the newest 200 routes so the data file stays a sensible size."""
     items = routes.get("items") or {}
-    keep = dict(sorted(items.items(), reverse=True)[:60])
+    keep = dict(sorted(items.items(), reverse=True)[:200])
     return {"items": keep, "files": routes.get("files", [])}
 
 

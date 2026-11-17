@@ -180,31 +180,49 @@ def collect(days: dict, workouts: list, since: str | None = None, routes: dict |
     return counts
 
 
+def _download(token, file_id) -> bytes:
+    r = requests.get(f"{DRIVE}/{file_id}", headers={"Authorization": f"Bearer {token}"},
+                     params={"alt": "media"}, timeout=600)
+    r.raise_for_status()
+    return r.content
+
+
 def collect_routes(token, folders, routes: dict) -> int:
-    """GPS routes from the .gpx files Health Sync saves next to each workout. `routes` holds
-    {"items": {id: route}, "files": [Drive file ids already read]}, so each file is downloaded once."""
+    """GPS routes for the Runs tab. `routes` holds {"items": {id: route}, "files": [Drive file ids already read]},
+    so each file is downloaded once. Sources:
+      - the .tcx / .gpx files Health Sync saves next to each workout in "Health Sync Activities"
+      - a Google Takeout zip (Google Fit history) placed in the Health Sync folder itself"""
     import routes as route_lib
     from zoneinfo import ZoneInfo
     tz = ZoneInfo(os.environ.get("TZ_NAME", "Asia/Kuala_Lumpur"))
-    fid = folders.get("Health Sync Activities")
-    if not fid:
-        return 0
     items, seen = routes.setdefault("items", {}), set(routes.setdefault("files", []))
     added = 0
-    for f in sorted(_list(token, fid), key=lambda f: f["modifiedTime"]):
-        if not f["name"].lower().endswith(".gpx") or f["id"] in seen:
-            continue
-        r = requests.get(f"{DRIVE}/{f['id']}", headers={"Authorization": f"Bearer {token}"},
-                         params={"alt": "media"}, timeout=120)
-        r.raise_for_status()
-        route = route_lib.parse_gpx(r.content.decode("utf-8", errors="replace"), tz)
-        seen.add(f["id"])
-        if not route:
-            continue
-        # Health Sync often saves the same workout twice under different names: keep the fuller copy.
+
+    def keep(route):
+        nonlocal added
         old = items.get(route["id"])
-        if not old or len(route["track"]) > len(old["track"]):
+        if route_lib.better(route, old):
             items[route["id"]] = route
             added += 0 if old else 1
+
+    fid = folders.get("Health Sync Activities")
+    files = sorted(_list(token, fid), key=lambda f: f["modifiedTime"]) if fid else []
+    for f in files:
+        if not f["name"].lower().endswith((".gpx", ".tcx")) or f["id"] in seen:
+            continue
+        route = route_lib.parse_file(f["name"], _download(token, f["id"]), tz)
+        seen.add(f["id"])
+        if route:
+            keep(route)
+
+    root = os.environ["HEALTH_SYNC_FOLDER_ID"].strip()
+    for f in _list(token, root):
+        name = f["name"].lower()
+        if f["id"] in seen or not name.endswith(".zip") or "takeout" not in name:
+            continue
+        for route in route_lib.parse_takeout(_download(token, f["id"]), tz):
+            keep(route)
+        seen.add(f["id"])
+
     routes["files"] = sorted(seen)
     return added

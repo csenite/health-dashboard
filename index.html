@@ -238,7 +238,7 @@
     </div>
     <div class="head-right">
     <!-- Version: a very big update adds 0.1, a minor update adds 0.0.1 -->
-    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019 · 1.4.0 Runs tab with GPS routes, track names and heart rate">v1.4.0 · 17 Nov 2026</div>
+    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019 · 1.4.0 Runs tab with GPS routes, track names and heart rate · 1.4.1 Google Fit run history, pace, cadence, 1 km laps and VO₂ max on the Runs tab">v1.4.1 · 17 Nov 2026</div>
     <div class="controls">
       <div class="seg" id="theme" role="group" aria-label="Theme">
         <button data-theme-set="light">Light</button>
@@ -322,7 +322,7 @@
   </section>
 
   <section id="tab-runs" hidden>
-    <div class="sub" style="margin:0 0 10px">GPS routes recorded with Samsung Health, newest first. Runs that start in the same place share a track name; tap ✎ to rename it (saved on this device).</div>
+    <div class="sub" style="margin:0 0 10px">GPS routes from Samsung Health and your Google Fit history, newest first. Runs that start in the same place share a track name; tap ✎ to rename it (saved on this device).</div>
     <div class="run-pick" id="runPick"></div>
     <div id="runEmpty" class="card" hidden>No GPS routes yet. They come from the .gpx files Health Sync saves to the “Health Sync Activities” folder on Google Drive, so the Drive connection needs to be set up (see README).</div>
     <div id="runBody" hidden>
@@ -336,13 +336,17 @@
         <div class="card"><h3 style="font-size:14px;margin:0">Route</h3><div class="sub" style="margin:1px 0 8px">Coloured by heart rate. Dashed grey lines bridge spots where the phone lost GPS.</div><div class="run-map" id="runMap"></div></div>
         <div class="card"><h3 style="font-size:14px;margin:0">Heart rate</h3><div class="sub" style="margin:1px 0 8px" id="runHrNote"></div><div class="run-hr" id="runHr"></div>
           <div class="hr-bar" id="runBar"></div><div class="key" id="runKey" style="margin-top:4px"></div></div>
+        <div class="card"><h3 style="font-size:14px;margin:0">1 km laps</h3><div class="sub" style="margin:1px 0 8px">Time for each kilometre. Shorter bars are faster.</div>
+          <div class="table-wrap"><table><thead><tr><th>Km</th><th class="num">Lap time</th><th class="num">Pace</th><th class="num">Avg HR</th><th style="width:40%"></th></tr></thead><tbody id="runLaps"></tbody></table></div></div>
+        <div class="card" id="runCadCard"><h3 style="font-size:14px;margin:0">Cadence</h3><div class="sub" style="margin:1px 0 8px">Steps per minute. Easy running is usually 150–170; under about 130 is walking.</div><div class="run-hr" id="runCad"></div></div>
+        <div class="card chart-card"><h3>VO₂ max</h3><div class="desc">ml/kg/min over the past year, the watch's fitness estimate. Easy aerobic running is what moves it.</div><div class="chart" id="runVo2"></div></div>
       </div>
       <h2 class="section">All recorded runs</h2>
       <div class="card"><div class="table-wrap"><table>
-        <thead><tr><th>Date</th><th>Track</th><th class="num">Duration</th><th class="num">GPS distance</th><th class="num">Avg HR</th><th class="num">Max HR</th><th class="num">Time at 150+ bpm</th><th class="num">Climb</th></tr></thead>
+        <thead><tr><th>Date</th><th>Track</th><th class="num">Duration</th><th class="num">Distance</th><th class="num">Avg pace</th><th class="num">Cadence</th><th class="num">Avg HR</th><th class="num">Max HR</th><th class="num">Time at 150+ bpm</th><th class="num">Climb</th></tr></thead>
         <tbody id="runRows"></tbody>
       </table></div></div>
-      <div class="sub" style="margin-top:10px">GPS distance leaves out signal gaps and impossible jumps, so it can read short when coverage is low. Heart-rate bands: under 120 light, 120–140 easy (aim here), 140–150 steady, 150+ hard.</div>
+      <div class="sub" style="margin-top:10px">Distance comes from the watch when the file has it, otherwise from GPS, which leaves out signal gaps and impossible jumps and can read short when coverage is low. Older runs come from your Google Fit history and may lack heart rate and cadence. Heart-rate bands: under 120 light, 120–140 easy (aim here), 140–150 steady, 150+ hard.</div>
     </div>
   </section>
 
@@ -1279,6 +1283,13 @@
   ];
   const hrBand = (bpm) => [...HR_BANDS].reverse().find((b) => bpm >= b.lo);
   let runSel = null;
+  const fmt2 = new Intl.NumberFormat("en", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+  const mmss = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s2 = pad(sec % 60); return h ? `${h}:${pad(m)}:${s2}` : `${m}:${s2}`; };
+  function vo2Near(date) {   // the latest VO2 max reading on or up to 14 days before the run
+    const lo = ymd(new Date(parseDay(date).getTime() - 14 * 864e5));
+    const hit = allRows.filter((x) => x.vo2 != null && x.date <= date && x.date >= lo).at(-1);
+    return hit ? { v: hit.vo2, date: hit.date } : null;
+  }
   function routeList() {
     return Object.values(payload?.routes?.items || {}).sort((a, b) => b.id.localeCompare(a.id));
   }
@@ -1326,16 +1337,36 @@
       renderRuns();
     };
     const hard = r.hrBands?.hard || 0, tracked = Object.values(r.hrBands || {}).reduce((a, b) => a + b, 0);
+    const km = r.km ?? r.gpsKm, vo2 = vo2Near(r.date);
     $("runTiles").replaceChildren(
-      tile({ label: "Duration", icon: "⏱️" }, fmtDuration(r.seconds)),
-      tile({ label: "GPS distance", icon: "📍", unit: "km" }, fmt1.format(r.gpsKm), `GPS signal ${Math.round(r.gpsCover * 100)}% of the time`),
-      tile({ label: "Avg heart rate", icon: "❤️", unit: "bpm" }, r.avgHr != null ? String(r.avgHr) : "—"),
-      tile({ label: "Max heart rate", icon: "🔺", unit: "bpm" }, r.maxHr != null ? String(r.maxHr) : "—"),
-      tile({ label: "Time at 150+", icon: "🔥", unit: "min" }, String(Math.round(hard / 60)), tracked ? `${Math.round((hard / tracked) * 100)}% of the session` : ""),
+      tile({ label: "Distance", icon: "📍", unit: "km" }, fmt2.format(km), r.kmFrom === "watch" ? `Watch · GPS ${Math.round(r.gpsCover * 100)}% of the time` : `GPS ${Math.round(r.gpsCover * 100)}% of the time`),
+      tile({ label: "Duration", icon: "⏱️" }, fmtDuration(r.activeSeconds || r.seconds)),
+      tile({ label: "Avg pace", icon: "🏃", unit: "/km" }, r.paceS ? mmss(r.paceS) : "—"),
+      tile({ label: "Cadence", icon: "👟", unit: "spm" }, r.cadence ? String(r.cadence) : "—", r.cadence ? (r.cadence >= 150 ? "Running rhythm" : r.cadence >= 130 ? "Jog/walk mix" : "Mostly walking") : "Not in this file"),
+      tile({ label: "Avg heart rate", icon: "❤️", unit: "bpm" }, r.avgHr != null ? String(r.avgHr) : "—", r.maxHr != null ? `Max ${r.maxHr} bpm` : ""),
+      tile({ label: "Time at 150+", icon: "🔥", unit: "min" }, String(Math.round(hard / 60)), tracked ? `${Math.round((hard / tracked) * 100)}% of the session` : "No heart rate"),
+      tile({ label: "VO₂ max", icon: "🫁" }, vo2 ? fmt1.format(vo2.v) : "—", vo2 ? `Reading from ${longDate(vo2.date)}` : "No reading near this run"),
       tile({ label: "Climb", icon: "⛰️", unit: "m" }, fmtInt.format(r.climbM)),
     );
     drawRouteMap($("runMap"), r);
-    drawRunHr($("runHr"), r);
+    drawRunLine($("runHr"), r, { i: 3, lo: 90, hi: 180, ticks: [100, 120, 140, 150, 160, 180], bands: true, color: "--bad", unit: "bpm" });
+    const hasCad = r.track.some((p) => p && p[4]);
+    $("runCadCard").hidden = !hasCad;
+    if (hasCad) drawRunLine($("runCad"), r, { i: 4, lo: 60, hi: 200, ticks: [80, 110, 130, 150, 170, 190], color: "--s1", unit: "spm",
+      guides: [{ lo: 150, hi: 200, color: "--st-good" }] });
+    const laps = $("runLaps"); laps.replaceChildren();
+    const sp = r.splits || [], full = sp.filter((x) => !x.part), best = full.length ? Math.min(...full.map((x) => x.s)) : null, worst = Math.max(1, ...sp.map((x) => (x.part ? (x.s * 1000) / x.part : x.s)));
+    if (!sp.length) { const tr = make("tr"), td = make("td", null, "Not enough distance for a full kilometre."); td.colSpan = 5; tr.append(td); laps.append(tr); }
+    for (const x of sp) {
+      const pace = x.part ? (x.s * 1000) / x.part : x.s, tr = make("tr");
+      tr.append(make("td", null, x.part ? `${fmt2.format(x.km)} (last ${x.part} m)` : String(x.km)), make("td", "num", mmss(x.s)),
+        make("td", "num", `${mmss(pace)} /km`), make("td", "num", x.hr != null ? `${x.hr} bpm` : "—"));
+      const td = make("td"), bar = make("i");
+      bar.style.cssText = `display:block;height:8px;border-radius:99px;width:${Math.max(4, (pace / worst) * 100)}%;background:${css(x.s === best && !x.part ? "--st-good" : "--s1")}`;
+      td.append(bar); tr.append(td); laps.append(tr);
+    }
+    chart($("runVo2"), allRows.filter((x) => x.date >= ymd(new Date(Date.now() - 365 * 864e5))),
+      { key: "vo2", color: css("--s3"), fmt: (v) => fmt1.format(v), zero: false, empty: "No VO₂ max readings yet" });
     const bar = $("runBar"); bar.replaceChildren();
     const key = $("runKey"); key.replaceChildren();
     for (const b of HR_BANDS) {
@@ -1349,14 +1380,15 @@
     for (const x of list) {
       const tr = make("tr"); tr.style.cursor = "pointer"; tr.onclick = () => { runSel = x.id; renderRuns(); scrollTo({ top: 0, behavior: "smooth" }); };
       tr.append(make("td", null, `${longDate(x.date)} · ${x.id.slice(11)}`), make("td", null, trackName(x)));
-      for (const v of [fmtDuration(x.seconds), `${fmt1.format(x.gpsKm)} km`, x.avgHr != null ? `${x.avgHr} bpm` : "—", x.maxHr != null ? `${x.maxHr} bpm` : "—",
+      for (const v of [fmtDuration(x.activeSeconds || x.seconds), `${fmt2.format(x.km ?? x.gpsKm)} km`, x.paceS ? `${mmss(x.paceS)} /km` : "—",
+        x.cadence ? `${x.cadence} spm` : "—", x.avgHr != null ? `${x.avgHr} bpm` : "—", x.maxHr != null ? `${x.maxHr} bpm` : "—",
         `${Math.round((x.hrBands?.hard || 0) / 60)} min`, `${fmtInt.format(x.climbM)} m`]) tr.append(make("td", "num", v));
       body.append(tr);
     }
   }
   function drawRouteMap(box, r) {
     box.replaceChildren();
-    const pts = r.track.filter(Boolean);
+    const pts = r.track.filter((p) => p && p[0] != null);
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
     const W = Math.max(200, box.clientWidth), H = Math.min(340, Math.max(220, W * 0.62)), padd = 16;
@@ -1368,6 +1400,7 @@
     let prev = null, last = null;
     for (const p of r.track) {
       if (p === null) { prev = null; continue; }
+      if (p[0] == null) continue;
       if (prev) {
         el("line", { x1: X(prev), y1: Y(prev), x2: X(p), y2: Y(p), stroke: (prev[3] ?? p[3]) != null ? css(hrBand(prev[3] ?? p[3]).color) : css("--axis"),
           "stroke-width": 3.2, "stroke-linecap": "round", opacity: 0.9 }, svg);
@@ -1388,42 +1421,41 @@
     el("text", { x: X(s) + 9, y: Y(s) + 4, class: "tick" }, svg).textContent = "Start";
     el("text", { x: X(e) + 9, y: Y(e) + 4, class: "tick" }, svg).textContent = "Finish";
   }
-  function drawRunHr(box, r) {
+  function drawRunLine(box, r, o) {
     box.replaceChildren();
-    const W = Math.max(200, box.clientWidth), H = 220, padL = 34, padR = 8, padT = 8, padB = 22;
-    const lo = 90, hi = 180, maxS = Math.max(60, r.seconds);
+    const W = Math.max(200, box.clientWidth), H = 200, padL = 34, padR = 8, padT = 8, padB = 22;
+    const lo = o.lo, hi = o.hi, maxS = Math.max(60, r.seconds);
     const X = (s) => padL + (s / maxS) * (W - padL - padR), Y = (v) => padT + (1 - (v - lo) / (hi - lo)) * (H - padT - padB);
-    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Heart rate", style: `height:${H}px` }, box);
-    for (const [i, b] of HR_BANDS.entries()) {
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": o.unit, style: `height:${H}px` }, box);
+    if (o.bands) for (const [i, b] of HR_BANDS.entries()) {
       const top = HR_BANDS[i + 1]?.lo ?? hi, bot = Math.max(lo, b.lo);
       el("rect", { x: padL, width: W - padL - padR, y: Y(top), height: Y(bot) - Y(top), fill: css(b.color), opacity: 0.12 }, svg);
     }
-    for (const t of [100, 120, 140, 150, 160, 180]) {
+    for (const g of o.guides || []) el("rect", { x: padL, width: W - padL - padR, y: Y(g.hi), height: Y(g.lo) - Y(g.hi), fill: css(g.color), opacity: 0.12 }, svg);
+    for (const t of o.ticks) {
       el("line", { x1: padL, x2: W - padR, y1: Y(t), y2: Y(t), stroke: css("--grid"), "stroke-width": 1 }, svg);
       el("text", { x: padL - 6, y: Y(t) + 4, class: "tick", "text-anchor": "end" }, svg).textContent = t;
     }
-    const mins = maxS / 60, step = mins > 60 ? 15 : mins > 30 ? 10 : 5;
+    const mins = maxS / 60, step = mins > 90 ? 30 : mins > 60 ? 15 : mins > 30 ? 10 : 5;
     for (let m = 0; m <= mins; m += step) el("text", { x: X(m * 60), y: H - 5, class: "tick", "text-anchor": "middle" }, svg).textContent = `${m}′`;
     let d = "", pen = false, prevS = null;
     for (const p of r.track) {
-      if (!p || p[3] == null || (prevS != null && p[2] - prevS > 30)) { pen = false; if (!p) continue; }
-      if (p[3] == null) continue;
-      d += `${pen ? "L" : "M"}${X(p[2]).toFixed(1)},${Y(Math.max(lo, Math.min(hi, p[3]))).toFixed(1)}`;
+      if (!p || p[o.i] == null || (prevS != null && p[2] - prevS > 30)) { pen = false; if (!p || p[o.i] == null) continue; }
+      d += `${pen ? "L" : "M"}${X(p[2]).toFixed(1)},${Y(Math.max(lo, Math.min(hi, p[o.i]))).toFixed(1)}`;
       pen = true; prevS = p[2];
     }
-    el("path", { d, fill: "none", stroke: css("--bad"), "stroke-width": 1.8, "stroke-linejoin": "round" }, svg);
-    // hover readout
+    el("path", { d, fill: "none", stroke: css(o.color), "stroke-width": 1.8, "stroke-linejoin": "round" }, svg);
+    const withV = r.track.filter((p) => p && p[o.i] != null);
+    if (!withV.length) { box.append(make("div", "empty", "No readings in this file")); return; }
     const tip = make("div", "tip"); box.append(tip);
     const hl = el("line", { y1: padT, y2: H - padB, stroke: css("--axis"), visibility: "hidden" }, svg);
-    const withHr = r.track.filter((p) => p && p[3] != null);
     const hit = el("rect", { x: padL, y: 0, width: W - padL - padR, height: H, fill: "transparent" }, svg);
     const move = (ev) => {
       const rect = svg.getBoundingClientRect(), sx = ((ev.clientX - rect.left) / rect.width) * W;
       const s = ((sx - padL) / (W - padL - padR)) * maxS;
-      const p = withHr.reduce((a, b) => (Math.abs(b[2] - s) < Math.abs(a[2] - s) ? b : a), withHr[0]);
-      if (!p) return;
+      const p = withV.reduce((a, b) => (Math.abs(b[2] - s) < Math.abs(a[2] - s) ? b : a), withV[0]);
       hl.setAttribute("x1", X(p[2])); hl.setAttribute("x2", X(p[2])); hl.setAttribute("visibility", "visible");
-      tip.replaceChildren(make("div", "d", `${Math.floor(p[2] / 60)}:${pad(p[2] % 60)} in`), make("div", null, `${p[3]} bpm · ${hrBand(p[3]).label.split(" ")[0]}`));
+      tip.replaceChildren(make("div", "d", `${mmss(p[2])} in`), make("div", null, `${p[o.i]} ${o.unit}` + (o.bands ? ` · ${hrBand(p[o.i]).label.split(" ")[0]}` : "")));
       tip.style.display = "block";
       const bx = (X(p[2]) / W) * rect.width, tw = tip.offsetWidth;
       tip.style.left = Math.max(0, Math.min(rect.width - tw, bx + 12 + tw > rect.width ? bx - tw - 12 : bx + 12)) + "px"; tip.style.top = "6px";
