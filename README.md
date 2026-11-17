@@ -7,7 +7,7 @@ Data comes from **two sources**, and either one keeps working if the other stops
 | Source | Gives | Login |
 |---|---|---|
 | **Google Health API** (main source) | Samsung steps, sleep, workouts, weight, body fat, resting and lowest heart rate, VO2 max | your Google login; expires every 7 days while the app is in Testing mode |
-| **Health Sync → Google Drive** (optional, `Health Sync` folder) | bone mass and BMR, plus a fallback when the Google login has expired | a service account, which never expires |
+| **Health Sync → Google Drive** (optional, `Health Sync` folder) | bone mass, BMR and GPS routes for the Runs tab, plus a fallback when the Google login has expired | a service account, which never expires |
 
 If the Google Health login lapses, the figures Health Sync also has keep updating from there, and the page tells you.
 
@@ -20,7 +20,8 @@ How it runs:
 ```
 index.html                         the dashboard (one file, no libraries)
 scripts/fetch_health.py            Google Health API + combines everything + encrypts
-scripts/drive_source.py            reads the Health Sync CSVs from Drive
+scripts/drive_source.py            reads the Health Sync CSVs (and workout .gpx routes) from Drive
+scripts/routes.py                  turns a .gpx file into a compact route with heart rate
 .github/workflows/update-data.yml  runs it every 3 hours
 tools/login.bat                    Google Health sign-in on your PC; prints the GitHub secrets
 tools/preview.bat                  preview with your real data on your PC before uploading
@@ -77,6 +78,7 @@ Until you do, the page shows a note, and only the figures Health Sync provides k
 - **Steps:** Samsung Health's own count. Google Health's combined daily total has run about 1.65x higher since May 2026, which looks like double counting, so it's only a fallback for days with no Samsung count.
 - **Weight and body fat:** the first morning reading of each day (from 4 am), or the earliest reading if there's no morning one.
 - **Workouts:** from Google Health. Health Sync's workout files overstate distance, so they only fill in sessions Google Health doesn't have.
+- **Runs tab:** GPS routes come from the `.gpx` files Health Sync saves in `Health Sync Activities`, so this tab needs the Drive connection (step 3). Each file is read once. Runs that start in the same place share a track name; rename it with ✎ on the tab (saved in that browser). Phone GPS often drops out, so GPS distance leaves out gaps and impossible jumps.
 - **Keep Health Sync working:** on your phone, set Health Sync's battery to **Unrestricted** so it keeps uploading in the background.
 - **Update frequency:** the `cron` line in `.github/workflows/update-data.yml`.
 - **Change your password:** update `DASHBOARD_PASSWORD` and re-run the workflow. It re-fetches the last year.

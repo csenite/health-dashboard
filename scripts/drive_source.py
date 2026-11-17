@@ -82,9 +82,10 @@ def _files(token, folders, name, since=None):
     return sorted(files, key=lambda f: f["modifiedTime"])
 
 
-def collect(days: dict, workouts: list, since: str | None = None) -> dict:
-    """Adds Health Sync data into `days` / `workouts` in place. Returns per-type counts.
-    `since`: only read files modified after this ISO time (None = read everything)."""
+def collect(days: dict, workouts: list, since: str | None = None, routes: dict | None = None) -> dict:
+    """Adds Health Sync data into `days` / `workouts` (and GPS routes into `routes`) in place.
+    Returns per-type counts.
+    `since`: only read CSV files modified after this ISO time (None = read everything)."""
     token = _token()
     root = os.environ["HEALTH_SYNC_FOLDER_ID"].strip()
     folders = {f["name"]: f["id"] for f in _list(token, root, folders=True)}
@@ -173,4 +174,37 @@ def collect(days: dict, workouts: list, since: str | None = None) -> dict:
             })
             counts["workouts"] = counts.get("workouts", 0) + 1
     workouts.sort(key=lambda w: w["start"], reverse=True)
+
+    if routes is not None:
+        counts["routes"] = collect_routes(token, folders, routes)
     return counts
+
+
+def collect_routes(token, folders, routes: dict) -> int:
+    """GPS routes from the .gpx files Health Sync saves next to each workout. `routes` holds
+    {"items": {id: route}, "files": [Drive file ids already read]}, so each file is downloaded once."""
+    import routes as route_lib
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo(os.environ.get("TZ_NAME", "Asia/Kuala_Lumpur"))
+    fid = folders.get("Health Sync Activities")
+    if not fid:
+        return 0
+    items, seen = routes.setdefault("items", {}), set(routes.setdefault("files", []))
+    added = 0
+    for f in sorted(_list(token, fid), key=lambda f: f["modifiedTime"]):
+        if not f["name"].lower().endswith(".gpx") or f["id"] in seen:
+            continue
+        r = requests.get(f"{DRIVE}/{f['id']}", headers={"Authorization": f"Bearer {token}"},
+                         params={"alt": "media"}, timeout=120)
+        r.raise_for_status()
+        route = route_lib.parse_gpx(r.content.decode("utf-8", errors="replace"), tz)
+        seen.add(f["id"])
+        if not route:
+            continue
+        # Health Sync often saves the same workout twice under different names: keep the fuller copy.
+        old = items.get(route["id"])
+        if not old or len(route["track"]) > len(old["track"]):
+            items[route["id"]] = route
+            added += 0 if old else 1
+    routes["files"] = sorted(seen)
+    return added

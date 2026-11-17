@@ -153,6 +153,19 @@
   .btn { font: inherit; font-weight: 600; background: var(--s1); color: var(--on-accent); border: 0; border-radius: 9px; padding: 9px 16px; cursor: pointer; }
   .btn:disabled { opacity: .6; cursor: default; }
   .err { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 8px; }
+  /* Runs tab */
+  .run-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .run-pick button { border: 1px solid var(--line); background: var(--panel); color: var(--muted); font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 9px; cursor: pointer; text-align: left; line-height: 1.3; }
+  .run-pick button b { display: block; color: var(--fg); font-weight: 600; font-size: 13px; }
+  .run-pick button[aria-pressed="true"] { border-color: var(--s1); box-shadow: inset 0 0 0 1px var(--s1); }
+  .run-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 10px; }
+  .run-name { font-size: 21px; font-weight: 650; letter-spacing: -.01em; margin: 0; }
+  .run-map svg, .run-hr svg { display: block; width: 100%; overflow: visible; }
+  .run-hr { position: relative; }
+  .run-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 10px; }
+  .run-map .tick { paint-order: stroke; stroke: var(--panel); stroke-width: 3px; }
+  .hr-bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--grid); margin: 8px 0 4px; }
+  .hr-bar i { display: block; height: 100%; }
   .linkbtn { background: none; border: 0; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 0; }
 
   /* layout: 3 charts a row on wide screens, 2 on tablets and phones; tap a chart to enlarge it */
@@ -225,7 +238,7 @@
     </div>
     <div class="head-right">
     <!-- Version: a very big update adds 0.1, a minor update adds 0.0.1 -->
-    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019">v1.3.3 · 12 Nov 2026</div>
+    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019 · 1.4.0 Runs tab with GPS routes, track names and heart rate">v1.4.0 · 17 Nov 2026</div>
     <div class="controls">
       <div class="seg" id="theme" role="group" aria-label="Theme">
         <button data-theme-set="light">Light</button>
@@ -244,6 +257,7 @@
     <button role="tab" data-tab="bandsBmi">Weight Bands · BMI</button>
     <button role="tab" data-tab="monthly">Monthly Averages</button>
     <button role="tab" data-tab="recomp">Recomposition Signal</button>
+    <button role="tab" data-tab="runs">Runs · Routes &amp; Heart Rate</button>
   </nav>
 
   <section id="tab-daily" hidden>
@@ -305,6 +319,31 @@
       </div>
     </div>
     <div class="sub" style="margin-top:10px">Weight in kg, sleep in hours a night, BMR in kcal a day. The current month's step average leaves out today, which isn't finished.</div>
+  </section>
+
+  <section id="tab-runs" hidden>
+    <div class="sub" style="margin:0 0 10px">GPS routes recorded with Samsung Health, newest first. Runs that start in the same place share a track name; tap ✎ to rename it (saved on this device).</div>
+    <div class="run-pick" id="runPick"></div>
+    <div id="runEmpty" class="card" hidden>No GPS routes yet. They come from the .gpx files Health Sync saves to the “Health Sync Activities” folder on Google Drive, so the Drive connection needs to be set up (see README).</div>
+    <div id="runBody" hidden>
+      <div class="run-head">
+        <h2 class="run-name" id="runName"></h2>
+        <button class="linkbtn" id="runRename" type="button">✎ Rename track</button>
+        <span class="sub" id="runWhen" style="margin:0"></span>
+      </div>
+      <div class="tiles" id="runTiles" style="margin-bottom:10px"></div>
+      <div class="run-grid">
+        <div class="card"><h3 style="font-size:14px;margin:0">Route</h3><div class="sub" style="margin:1px 0 8px">Coloured by heart rate. Dashed grey lines bridge spots where the phone lost GPS.</div><div class="run-map" id="runMap"></div></div>
+        <div class="card"><h3 style="font-size:14px;margin:0">Heart rate</h3><div class="sub" style="margin:1px 0 8px" id="runHrNote"></div><div class="run-hr" id="runHr"></div>
+          <div class="hr-bar" id="runBar"></div><div class="key" id="runKey" style="margin-top:4px"></div></div>
+      </div>
+      <h2 class="section">All recorded runs</h2>
+      <div class="card"><div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Track</th><th class="num">Duration</th><th class="num">GPS distance</th><th class="num">Avg HR</th><th class="num">Max HR</th><th class="num">Time at 150+ bpm</th><th class="num">Climb</th></tr></thead>
+        <tbody id="runRows"></tbody>
+      </table></div></div>
+      <div class="sub" style="margin-top:10px">GPS distance leaves out signal gaps and impossible jumps, so it can read short when coverage is low. Heart-rate bands: under 120 light, 120–140 easy (aim here), 140–150 steady, 150+ hard.</div>
+    </div>
   </section>
 
   <section id="tab-recomp" hidden>
@@ -1051,7 +1090,9 @@
       const tr = make("tr");
       const time = (w.start || "").slice(11, 16);
       tr.append(make("td", null, `${longDate(w.date)}${time ? " · " + time : ""}`));
-      const kind = make("td"); kind.append(make("span", "pill", titleCase(w.type))); tr.append(kind);
+      const kind = make("td"); kind.append(make("span", "pill", titleCase(w.type)));
+      const rt = routeFor(w); if (rt) kind.append(make("span", "sub", " " + trackName(rt)));
+      tr.append(kind);
       for (const v of [w.km != null ? `${fmt1.format(w.km)} km` : "—", fmtDuration(w.seconds), w.avgHr != null ? `${fmtInt.format(w.avgHr)} bpm` : "—",
         w.maxHr != null ? `${fmtInt.format(w.maxHr)} bpm` : "—", w.kcal != null ? `${fmtInt.format(w.kcal)} kcal` : "—"])
         tr.append(make("td", "num", v));
@@ -1229,12 +1270,174 @@
       tiles.append(tile({ label, unit: "kg" }, fmt1.format(val), c[0], null, statusEl(zonesFor(zk), val), zoneOf(zonesFor(zk), val)));
   }
 
+  // ---------- Runs tab: GPS routes with heart rate
+  const HR_BANDS = [
+    { key: "light", label: "Light <120", color: "--s1", lo: 0 },
+    { key: "easy", label: "Easy 120–140", color: "--st-good", lo: 120 },
+    { key: "steady", label: "Steady 140–150", color: "--st-warn", lo: 140 },
+    { key: "hard", label: "Hard 150+", color: "--st-bad", lo: 150 },
+  ];
+  const hrBand = (bpm) => [...HR_BANDS].reverse().find((b) => bpm >= b.lo);
+  let runSel = null;
+  function routeList() {
+    return Object.values(payload?.routes?.items || {}).sort((a, b) => b.id.localeCompare(a.id));
+  }
+  function trackKey(r) {   // runs starting within a few hundred metres share a track
+    const list = routeList().slice().sort((a, b) => a.id.localeCompare(b.id)), places = [];
+    for (const x of list) {
+      let p = places.find((q) => Math.abs(q[0] - x.near[0]) <= 0.004 && Math.abs(q[1] - x.near[1]) <= 0.004);
+      if (!p) { p = x.near; places.push(p); }
+      if (x.id === r.id) return { n: places.indexOf(p), key: p.join(",") };
+    }
+    return { n: 0, key: r.near.join(",") };
+  }
+  function trackNames() { try { return JSON.parse(store.get("hd-track-names") || "{}"); } catch { return {}; } }
+  function trackName(r) {
+    const t = trackKey(r);
+    return trackNames()[t.key] || `Track ${String.fromCharCode(65 + (t.n % 26))}`;
+  }
+  function routeFor(w) {   // the GPS route recorded with a workout (same day and type, starts within 10 minutes)
+    if (!w.start) return null;
+    const ws = w.start.replace(/\./g, "-").slice(0, 16);
+    const toMin = (s) => { const [d, t] = s.split(" "); return Date.parse(d + "T" + t + ":00") / 60000; };
+    return routeList().find((r) => r.type === (w.type || "").toUpperCase() && Math.abs(toMin(r.id) - toMin(ws)) <= 10) || null;
+  }
+  function renderRuns() {
+    const list = routeList();
+    $("runEmpty").hidden = !!list.length; $("runBody").hidden = !list.length;
+    const pick = $("runPick"); pick.replaceChildren();
+    if (!list.length) return;
+    if (!list.find((r) => r.id === runSel)) runSel = list[0].id;
+    for (const r of list) {
+      const b = make("button"); b.type = "button"; b.setAttribute("aria-pressed", String(r.id === runSel));
+      b.append(make("b", null, trackName(r)), document.createTextNode(`${longDate(r.date)} · ${r.id.slice(11)}`));
+      b.onclick = () => { runSel = r.id; renderRuns(); };
+      pick.append(b);
+    }
+    const r = list.find((x) => x.id === runSel);
+    $("runName").textContent = trackName(r);
+    $("runWhen").textContent = `${titleCase(r.type)} · ${longDate(r.date)}, ${r.id.slice(11)}`;
+    $("runRename").onclick = () => {
+      const v = prompt("Name this track (all runs that start here share it):", trackName(r));
+      if (v == null) return;
+      const names = trackNames(), k = trackKey(r).key;
+      if (v.trim()) names[k] = v.trim().slice(0, 40); else delete names[k];
+      store.set("hd-track-names", JSON.stringify(names));
+      renderRuns();
+    };
+    const hard = r.hrBands?.hard || 0, tracked = Object.values(r.hrBands || {}).reduce((a, b) => a + b, 0);
+    $("runTiles").replaceChildren(
+      tile({ label: "Duration", icon: "⏱️" }, fmtDuration(r.seconds)),
+      tile({ label: "GPS distance", icon: "📍", unit: "km" }, fmt1.format(r.gpsKm), `GPS signal ${Math.round(r.gpsCover * 100)}% of the time`),
+      tile({ label: "Avg heart rate", icon: "❤️", unit: "bpm" }, r.avgHr != null ? String(r.avgHr) : "—"),
+      tile({ label: "Max heart rate", icon: "🔺", unit: "bpm" }, r.maxHr != null ? String(r.maxHr) : "—"),
+      tile({ label: "Time at 150+", icon: "🔥", unit: "min" }, String(Math.round(hard / 60)), tracked ? `${Math.round((hard / tracked) * 100)}% of the session` : ""),
+      tile({ label: "Climb", icon: "⛰️", unit: "m" }, fmtInt.format(r.climbM)),
+    );
+    drawRouteMap($("runMap"), r);
+    drawRunHr($("runHr"), r);
+    const bar = $("runBar"); bar.replaceChildren();
+    const key = $("runKey"); key.replaceChildren();
+    for (const b of HR_BANDS) {
+      const secs = r.hrBands?.[b.key] || 0;
+      const i = make("i"); i.style.width = tracked ? (secs / tracked) * 100 + "%" : 0; i.style.background = css(b.color); bar.append(i);
+      const sp = make("span"), sw = make("i"); sw.style.background = css(b.color);
+      sp.append(sw, document.createTextNode(`${b.label} · ${Math.round(secs / 60)} min`)); key.append(sp);
+    }
+    $("runHrNote").textContent = "Beats per minute through the session. The green band is easy aerobic work.";
+    const body = $("runRows"); body.replaceChildren();
+    for (const x of list) {
+      const tr = make("tr"); tr.style.cursor = "pointer"; tr.onclick = () => { runSel = x.id; renderRuns(); scrollTo({ top: 0, behavior: "smooth" }); };
+      tr.append(make("td", null, `${longDate(x.date)} · ${x.id.slice(11)}`), make("td", null, trackName(x)));
+      for (const v of [fmtDuration(x.seconds), `${fmt1.format(x.gpsKm)} km`, x.avgHr != null ? `${x.avgHr} bpm` : "—", x.maxHr != null ? `${x.maxHr} bpm` : "—",
+        `${Math.round((x.hrBands?.hard || 0) / 60)} min`, `${fmtInt.format(x.climbM)} m`]) tr.append(make("td", "num", v));
+      body.append(tr);
+    }
+  }
+  function drawRouteMap(box, r) {
+    box.replaceChildren();
+    const pts = r.track.filter(Boolean);
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const W = Math.max(200, box.clientWidth), H = Math.min(340, Math.max(220, W * 0.62)), padd = 16;
+    const sc = Math.min((W - 2 * padd) / Math.max(1, maxX - minX), (H - 2 * padd) / Math.max(1, maxY - minY));
+    const ox = (W - (maxX - minX) * sc) / 2, oy = (H - (maxY - minY) * sc) / 2;
+    const X = (p) => ox + (p[0] - minX) * sc, Y = (p) => H - oy - (p[1] - minY) * sc;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Route map", style: `height:${H}px` }, box);
+    // dashed grey across GPS gaps, so you can still follow the order
+    let prev = null, last = null;
+    for (const p of r.track) {
+      if (p === null) { prev = null; continue; }
+      if (prev) {
+        el("line", { x1: X(prev), y1: Y(prev), x2: X(p), y2: Y(p), stroke: (prev[3] ?? p[3]) != null ? css(hrBand(prev[3] ?? p[3]).color) : css("--axis"),
+          "stroke-width": 3.2, "stroke-linecap": "round", opacity: 0.9 }, svg);
+      } else if (last) {   // dashed grey across a GPS gap, so the order stays readable
+        el("line", { x1: X(last), y1: Y(last), x2: X(p), y2: Y(p), stroke: css("--axis"), "stroke-width": 1.2, "stroke-dasharray": "3 4", opacity: 0.7 }, svg);
+      }
+      prev = p; last = p;
+    }
+    // 100 m scale bar
+    const m100 = 100 * sc;
+    if (m100 > 20 && m100 < W / 2) {
+      el("line", { x1: 10, y1: H - 8, x2: 10 + m100, y2: H - 8, stroke: css("--muted"), "stroke-width": 2 }, svg);
+      el("text", { x: 10, y: H - 13, class: "tick" }, svg).textContent = "100 m";
+    }
+    const s = pts[0], e = pts.at(-1);
+    el("circle", { cx: X(s), cy: Y(s), r: 6, fill: css("--st-good"), stroke: css("--panel"), "stroke-width": 2 }, svg);
+    el("circle", { cx: X(e), cy: Y(e), r: 6, fill: css("--fg"), stroke: css("--panel"), "stroke-width": 2 }, svg);
+    el("text", { x: X(s) + 9, y: Y(s) + 4, class: "tick" }, svg).textContent = "Start";
+    el("text", { x: X(e) + 9, y: Y(e) + 4, class: "tick" }, svg).textContent = "Finish";
+  }
+  function drawRunHr(box, r) {
+    box.replaceChildren();
+    const W = Math.max(200, box.clientWidth), H = 220, padL = 34, padR = 8, padT = 8, padB = 22;
+    const lo = 90, hi = 180, maxS = Math.max(60, r.seconds);
+    const X = (s) => padL + (s / maxS) * (W - padL - padR), Y = (v) => padT + (1 - (v - lo) / (hi - lo)) * (H - padT - padB);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Heart rate", style: `height:${H}px` }, box);
+    for (const [i, b] of HR_BANDS.entries()) {
+      const top = HR_BANDS[i + 1]?.lo ?? hi, bot = Math.max(lo, b.lo);
+      el("rect", { x: padL, width: W - padL - padR, y: Y(top), height: Y(bot) - Y(top), fill: css(b.color), opacity: 0.12 }, svg);
+    }
+    for (const t of [100, 120, 140, 150, 160, 180]) {
+      el("line", { x1: padL, x2: W - padR, y1: Y(t), y2: Y(t), stroke: css("--grid"), "stroke-width": 1 }, svg);
+      el("text", { x: padL - 6, y: Y(t) + 4, class: "tick", "text-anchor": "end" }, svg).textContent = t;
+    }
+    const mins = maxS / 60, step = mins > 60 ? 15 : mins > 30 ? 10 : 5;
+    for (let m = 0; m <= mins; m += step) el("text", { x: X(m * 60), y: H - 5, class: "tick", "text-anchor": "middle" }, svg).textContent = `${m}′`;
+    let d = "", pen = false, prevS = null;
+    for (const p of r.track) {
+      if (!p || p[3] == null || (prevS != null && p[2] - prevS > 30)) { pen = false; if (!p) continue; }
+      if (p[3] == null) continue;
+      d += `${pen ? "L" : "M"}${X(p[2]).toFixed(1)},${Y(Math.max(lo, Math.min(hi, p[3]))).toFixed(1)}`;
+      pen = true; prevS = p[2];
+    }
+    el("path", { d, fill: "none", stroke: css("--bad"), "stroke-width": 1.8, "stroke-linejoin": "round" }, svg);
+    // hover readout
+    const tip = make("div", "tip"); box.append(tip);
+    const hl = el("line", { y1: padT, y2: H - padB, stroke: css("--axis"), visibility: "hidden" }, svg);
+    const withHr = r.track.filter((p) => p && p[3] != null);
+    const hit = el("rect", { x: padL, y: 0, width: W - padL - padR, height: H, fill: "transparent" }, svg);
+    const move = (ev) => {
+      const rect = svg.getBoundingClientRect(), sx = ((ev.clientX - rect.left) / rect.width) * W;
+      const s = ((sx - padL) / (W - padL - padR)) * maxS;
+      const p = withHr.reduce((a, b) => (Math.abs(b[2] - s) < Math.abs(a[2] - s) ? b : a), withHr[0]);
+      if (!p) return;
+      hl.setAttribute("x1", X(p[2])); hl.setAttribute("x2", X(p[2])); hl.setAttribute("visibility", "visible");
+      tip.replaceChildren(make("div", "d", `${Math.floor(p[2] / 60)}:${pad(p[2] % 60)} in`), make("div", null, `${p[3]} bpm · ${hrBand(p[3]).label.split(" ")[0]}`));
+      tip.style.display = "block";
+      const bx = (X(p[2]) / W) * rect.width, tw = tip.offsetWidth;
+      tip.style.left = Math.max(0, Math.min(rect.width - tw, bx + 12 + tw > rect.width ? bx - tw - 12 : bx + 12)) + "px"; tip.style.top = "6px";
+    };
+    hit.addEventListener("pointermove", move); hit.addEventListener("pointerdown", move);
+    hit.addEventListener("pointerleave", () => { tip.style.display = "none"; hl.setAttribute("visibility", "hidden"); });
+  }
+
   // ---------- tabs
   function switchTab(name) {
-    if (!["daily", "bands", "bandsBmi", "monthly", "recomp"].includes(name)) name = "daily";
+    if (!["daily", "bands", "bandsBmi", "monthly", "recomp", "runs"].includes(name)) name = "daily";
     tab = name; store.set("hd-tab", name);
     for (const b of $("tabs").querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
-    for (const k of ["daily", "bands", "monthly", "recomp"]) $("tab-" + k).hidden = k !== (name === "bandsBmi" ? "bands" : name);
+    for (const k of ["daily", "bands", "monthly", "recomp", "runs"]) $("tab-" + k).hidden = k !== (name === "bandsBmi" ? "bands" : name);
     renderTab();
   }
   function renderTab() {
@@ -1243,6 +1446,7 @@
     if (tab === "bands" || tab === "bandsBmi") renderBands(tab === "bandsBmi" ? "bmi" : "lean");
     if (tab === "monthly") renderMonthly();
     if (tab === "recomp") renderRecomp();
+    if (tab === "runs") renderRuns();
   }
   function setRangeButtons() {
     for (const b of $("range").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.range === String(range)));

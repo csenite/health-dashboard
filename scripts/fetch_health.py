@@ -404,6 +404,13 @@ def fetch_google_health(days: dict, workouts: list, errors: dict):
             print(f"Google Health {data_type}: FAILED {e}")
 
 
+def prune_routes(routes: dict) -> dict:
+    """Keeps the newest 60 routes so the data file stays small."""
+    items = routes.get("items") or {}
+    keep = dict(sorted(items.items(), reverse=True)[:60])
+    return {"items": keep, "files": routes.get("files", [])}
+
+
 def main():
     password = os.environ.get("DASHBOARD_PASSWORD") or None
     if os.environ.get("GITHUB_ACTIONS") and not password:
@@ -412,6 +419,7 @@ def main():
     before = copy.deepcopy(existing)   # days and workouts below are updated in place
     days: dict = existing.get("days", {})
     workouts: list = existing.get("workouts", [])
+    routes: dict = existing.get("routes") or {}
     errors, sources_ok = {}, []
 
     # 1) Google Health API (steps, heart rate, distance). Login lasts 7 days in Testing mode.
@@ -435,7 +443,7 @@ def main():
             since = None
             if drive_since:
                 since = (dt.datetime.fromisoformat(drive_since) - dt.timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S")
-            counts = drive_source.collect(days, workouts, since)
+            counts = drive_source.collect(days, workouts, since, routes)
             print(f"Health Sync (Drive): {counts}")
             drive_since = started.isoformat(timespec="seconds")
             sources_ok.append("health-sync")
@@ -450,7 +458,8 @@ def main():
     # Height, birth date and sex stay in a secret and the encrypted file, never in the public code.
     profile = json.loads(os.environ.get("PROFILE_JSON") or "null") or existing.get("profile")
     new = {"days": dict(sorted(days.items())), "workouts": workouts[:500], "tz": str(TZ),
-           "errors": errors, "sources": sources_ok, "profile": profile}
+           "errors": errors, "sources": sources_ok, "profile": profile,
+           "routes": prune_routes(routes)}
     old = {k: before.get(k) for k in new}
     if new == old and (ENC_FILE.exists() or PLAIN_FILE.exists()):
         print("No changes.")
