@@ -154,10 +154,28 @@
   .btn:disabled { opacity: .6; cursor: default; }
   .err { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 8px; }
   /* Runs tab */
-  .run-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .run-pick button { border: 1px solid var(--line); background: var(--panel); color: var(--muted); font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 9px; cursor: pointer; text-align: left; line-height: 1.3; }
-  .run-pick button b { display: block; color: var(--fg); font-weight: 600; font-size: 13px; }
-  .run-pick button[aria-pressed="true"] { border-color: var(--s1); box-shadow: inset 0 0 0 1px var(--s1); }
+  .run-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 0 0 12px; }
+  .run-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 12px; }
+  .run-card { position: relative; aspect-ratio: 1; border: 0; padding: 0; border-radius: 14px; overflow: hidden; cursor: pointer; background: #dfe3e6; color: #fff; text-align: left; font: inherit;
+    box-shadow: 0 1px 2px rgba(0,0,0,.12); transition: transform .15s ease, box-shadow .15s ease; }
+  .run-card:hover, .run-card:focus-visible { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,.22); outline: none; }
+  .run-card .map { position: absolute; inset: 0; }
+  .run-card .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 34%, rgba(20,20,20,.7) 52%, rgba(20,20,20,.92) 100%); pointer-events: none; }
+  .run-card .info { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 12px 11px; pointer-events: none; }
+  .run-card .ico { width: 17px; height: 17px; flex: none; }
+  .run-card .ttl { display: flex; align-items: center; gap: 5px; font-size: 15px; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; }
+  .run-card .ttl span { overflow: hidden; text-overflow: ellipsis; }
+  .run-card .when { font-size: 11px; opacity: .8; margin-bottom: 6px; }
+  .run-card .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px; }
+  .run-card .stats span { display: block; font-size: 10.5px; opacity: .8; }
+  .run-card .stats b { display: block; font-size: clamp(13px, 3.9vw, 17px); font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+  .map { position: relative; overflow: hidden; background: var(--wash); }
+  .map img { position: absolute; width: 256px; height: 256px; max-width: none; user-select: none; -webkit-user-drag: none; }
+  .map svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .map .attr { position: absolute; right: 4px; bottom: 2px; font-size: 9px; color: #555; background: rgba(255,255,255,.7); padding: 0 3px; border-radius: 3px; }
+  .run-card .map .attr { top: 3px; bottom: auto; right: 5px; font-size: 7.5px; }
+  .backbtn { border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: inherit; font-size: 13.5px; padding: 6px 13px; border-radius: 99px; cursor: pointer; margin-bottom: 12px; }
+  .backbtn:hover { border-color: var(--s1); }
   .run-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 10px; }
   .run-name { font-size: 21px; font-weight: 650; letter-spacing: -.01em; margin: 0; }
   .run-map svg, .run-hr svg { display: block; width: 100%; overflow: visible; }
@@ -238,7 +256,7 @@
     </div>
     <div class="head-right">
     <!-- Version: a very big update adds 0.1, a minor update adds 0.0.1 -->
-    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019 · 1.4.0 Runs tab with GPS routes, track names and heart rate · 1.4.1 Google Fit run history, pace, cadence, 1 km laps and VO₂ max on the Runs tab">v1.4.1 · 17 Nov 2026</div>
+    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019 · 1.4.0 Runs tab with GPS routes, track names and heart rate · 1.4.1 Google Fit run history, pace, cadence, 1 km laps and VO₂ max on the Runs tab · 1.5.0 Runs gallery with map thumbnails, runs and jogs only, Track_001 names">v1.5.0 · 17 Nov 2026</div>
     <div class="controls">
       <div class="seg" id="theme" role="group" aria-label="Theme">
         <button data-theme-set="light">Light</button>
@@ -322,10 +340,20 @@
   </section>
 
   <section id="tab-runs" hidden>
-    <div class="sub" style="margin:0 0 10px">GPS routes from Samsung Health and your Google Fit history, newest first. Runs that start in the same place share a track name; tap ✎ to rename it (saved on this device).</div>
-    <div class="run-pick" id="runPick"></div>
-    <div id="runEmpty" class="card" hidden>No GPS routes yet. They come from the .gpx files Health Sync saves to the “Health Sync Activities” folder on Google Drive, so the Drive connection needs to be set up (see README).</div>
+    <div id="runEmpty" class="card" hidden>No runs yet. They come from the workout files Health Sync saves to the “Health Sync Activities” folder on Google Drive, so the Drive connection needs to be set up (see README).</div>
+    <div id="runGallery" hidden>
+      <div class="run-bar">
+        <div class="sub" id="runCount" style="margin:0"></div>
+        <div class="seg" id="runSort" role="group" aria-label="Sort runs">
+          <button data-sort="new">Newest first</button>
+          <button data-sort="old">Oldest first</button>
+        </div>
+      </div>
+      <div class="run-cards" id="runCards"></div>
+      <div class="sub" style="margin-top:12px">Runs and jogs only, from Samsung Health and your Google Fit history. Older Google Fit walk/run sessions are included when the average pace was 12:00/km or faster. Map © OpenStreetMap contributors © CARTO.</div>
+    </div>
     <div id="runBody" hidden>
+      <button class="backbtn" id="runBack" type="button">← All runs</button>
       <div class="run-head">
         <h2 class="run-name" id="runName"></h2>
         <button class="linkbtn" id="runRename" type="button">✎ Rename track</button>
@@ -333,7 +361,7 @@
       </div>
       <div class="tiles" id="runTiles" style="margin-bottom:10px"></div>
       <div class="run-grid">
-        <div class="card"><h3 style="font-size:14px;margin:0">Route</h3><div class="sub" style="margin:1px 0 8px">Coloured by heart rate. Dashed grey lines bridge spots where the phone lost GPS.</div><div class="run-map" id="runMap"></div></div>
+        <div class="card"><h3 style="font-size:14px;margin:0">Route</h3><div class="sub" style="margin:1px 0 8px">Coloured by heart rate. Dashed lines bridge spots where the phone lost GPS.</div><div class="run-map" id="runMap"></div></div>
         <div class="card" id="runHrCard"><h3 style="font-size:14px;margin:0">Heart rate</h3><div class="sub" style="margin:1px 0 8px" id="runHrNote"></div><div class="run-hr" id="runHr"></div>
           <div class="hr-bar" id="runBar"></div><div class="key" id="runKey" style="margin-top:4px"></div></div>
         <div class="card"><h3 style="font-size:14px;margin:0">1 km laps</h3><div class="sub" style="margin:1px 0 8px">Time for each kilometre. Shorter bars are faster.</div>
@@ -341,11 +369,6 @@
         <div class="card" id="runCadCard"><h3 style="font-size:14px;margin:0">Cadence</h3><div class="sub" style="margin:1px 0 8px">Steps per minute. Easy running is usually 150–170; under about 130 is walking.</div><div class="run-hr" id="runCad"></div></div>
         <div class="card chart-card"><h3>VO₂ max</h3><div class="desc">ml/kg/min over the past year, the watch's fitness estimate. Easy aerobic running is what moves it.</div><div class="chart" id="runVo2"></div></div>
       </div>
-      <h2 class="section">All recorded runs</h2>
-      <div class="card"><div class="table-wrap"><table>
-        <thead><tr><th>Date</th><th>Track</th><th class="num">Duration</th><th class="num">Distance</th><th class="num">Avg pace</th><th class="num">Cadence</th><th class="num">Avg HR</th><th class="num">Max HR</th><th class="num">Time at 150+ bpm</th><th class="num">Climb</th></tr></thead>
-        <tbody id="runRows"></tbody>
-      </table></div></div>
       <div class="sub" style="margin-top:10px">Distance comes from the watch when the file has it, otherwise from GPS, which leaves out signal gaps and impossible jumps and can read short when coverage is low. Older runs come from your Google Fit history and may lack heart rate and cadence. Heart-rate bands: under 120 light, 120–140 easy (aim here), 140–150 steady, 150+ hard.</div>
     </div>
   </section>
@@ -1291,9 +1314,35 @@
     const hit = allRows.filter((x) => x.vo2 != null && x.date <= date && x.date >= lo).at(-1);
     return hit ? { v: hit.vo2, date: hit.date } : null;
   }
-  function routeList() {
-    return Object.values(payload?.routes?.items || {}).sort((a, b) => b.id.localeCompare(a.id));
+  function routeList() {   // runs and jogs, newest first (older files may still hold walks)
+    const ok = (r) => (/RUN|JOG|TREADMILL/.test(r.type) && r.type !== "WALK_RUN") || (r.type === "WALK_RUN" && r.paceS && r.paceS <= 720);
+    return Object.values(payload?.routes?.items || {}).filter(ok).sort((a, b) => b.id.localeCompare(a.id));
   }
+  function renderRunCards(list) {
+    $("runCount").textContent = `${list.length} run${list.length === 1 ? "" : "s"} · ${fmt1.format(list.reduce((a, x) => a + (x.km ?? x.gpsKm), 0))} km in total`;
+    for (const b of $("runSort").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.sort === runSort));
+    const box = $("runCards"); box.replaceChildren();
+    for (const r of list) {
+      const card = make("button", "run-card"); card.type = "button";
+      card.setAttribute("aria-label", `${trackName(r)}, ${runDate(r.date)}`);
+      const map = make("div", "map"); card.append(map, make("div", "shade"));
+      const info = make("div", "info");
+      const ttl = make("div", "ttl"); ttl.insertAdjacentHTML("beforeend", SHOE); ttl.append(make("span", null, trackName(r)));
+      info.append(ttl, make("div", "when", `${runDate(r.date)} · ${r.id.slice(11)}`));
+      const st = make("div", "stats");
+      const stat = (label, value) => { const d = make("div"); d.append(make("span", null, label), make("b", null, value)); return d; };
+      st.append(stat("Pace", r.paceS ? `${mmss(r.paceS)}/km` : "—"), stat("Time", fmtDurShort(r.activeSeconds || r.seconds)), stat("Distance", `${fmt2.format(r.km ?? r.gpsKm)} km`));
+      info.append(st); card.append(info);
+      card.onclick = () => { runSel = r.id; renderRuns(); scrollTo({ top: 0 }); };
+      box.append(card);
+      requestAnimationFrame(() => drawMap(map, r, { brand: true, reserve: info.offsetHeight }));
+    }
+  }
+  const fmtDurShort = (sec) => { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s2 = sec % 60; return h ? `${h}h ${m}m` : `${m}m ${pad(s2)}s`; };
+  $("runSort").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    runSort = b.dataset.sort; store.set("hd-run-sort", runSort); renderRuns();
+  });
   function trackKey(r) {   // runs starting within a few hundred metres share a track
     const list = routeList().slice().sort((a, b) => a.id.localeCompare(b.id)), places = [];
     for (const x of list) {
@@ -1306,7 +1355,7 @@
   function trackNames() { try { return JSON.parse(store.get("hd-track-names") || "{}"); } catch { return {}; } }
   function trackName(r) {
     const t = trackKey(r);
-    return trackNames()[t.key] || `Track ${String.fromCharCode(65 + (t.n % 26))}`;
+    return trackNames()[t.key] || `Track_${String(t.n + 1).padStart(3, "0")}`;
   }
   function routeFor(w) {   // the GPS route recorded with a workout (same day and type, starts within 10 minutes)
     if (!w.start) return null;
@@ -1314,19 +1363,18 @@
     const toMin = (s) => { const [d, t] = s.split(" "); return Date.parse(d + "T" + t + ":00") / 60000; };
     return routeList().find((r) => r.type === (w.type || "").toUpperCase() && Math.abs(toMin(r.id) - toMin(ws)) <= 10) || null;
   }
+  let runSort = store.get("hd-run-sort") === "old" ? "old" : "new";
+  const SHOE = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5c0-1 .6-1.6 1.6-1.6h3.3c1.2 0 2.2-.6 2.8-1.6L12.6 9l3 .9c-.4 1.3.3 2.6 1.6 3l2.6.8c1 .3 1.7 1.2 1.7 2.3v.5c0 .8-.7 1.5-1.5 1.5H5c-1.1 0-2-.9-2-2z"/><path d="M12.6 9l-1-2.3M8 18.9v-2M13 18.9v-2M18 18.9v-2"/></svg>';
   function renderRuns() {
     const list = routeList();
-    $("runEmpty").hidden = !!list.length; $("runBody").hidden = !list.length;
-    const pick = $("runPick"); pick.replaceChildren();
+    if (runSort === "old") list.reverse();
+    $("runEmpty").hidden = !!list.length;
+    const open = list.find((x) => x.id === runSel);
+    $("runGallery").hidden = !list.length || !!open; $("runBody").hidden = !open;
     if (!list.length) return;
-    if (!list.find((r) => r.id === runSel)) runSel = list[0].id;
-    for (const r of list) {
-      const b = make("button"); b.type = "button"; b.setAttribute("aria-pressed", String(r.id === runSel));
-      b.append(make("b", null, trackName(r)), document.createTextNode(`${runDate(r.date)} · ${r.id.slice(11)}`));
-      b.onclick = () => { runSel = r.id; renderRuns(); };
-      pick.append(b);
-    }
-    const r = list.find((x) => x.id === runSel);
+    if (!open) return renderRunCards(list);
+    $("runBack").onclick = () => { runSel = null; renderRuns(); };
+    const r = open;
     $("runName").textContent = trackName(r);
     $("runWhen").textContent = `${r.type === "WALK_RUN" ? "Walk/run" : titleCase(r.type)} · ${longDate(r.date)}, ${r.id.slice(11)}${r.source === "google-fit" ? " · from Google Fit" : ""}`;
     $("runRename").onclick = () => {
@@ -1349,7 +1397,7 @@
       tile({ label: "VO₂ max", icon: "🫁" }, vo2 ? fmt1.format(vo2.v) : "—", vo2 ? `Reading from ${longDate(vo2.date)}` : "No reading near this run"),
       tile({ label: "Climb", icon: "⛰️", unit: "m" }, fmtInt.format(r.climbM)),
     );
-    drawRouteMap($("runMap"), r);
+    drawMap($("runMap"), r, { detail: true });
     $("runHrCard").hidden = !tracked;
     if (tracked) drawRunLine($("runHr"), r, { i: 3, lo: 90, hi: 180, ticks: [100, 120, 140, 150, 160, 180], bands: true, color: "--bad", unit: "bpm" });
     const hasCad = r.track.some((p) => p && p[4]);
@@ -1379,17 +1427,65 @@
       sp.append(sw, document.createTextNode(`${b.label} · ${Math.round(secs / 60)} min`)); key.append(sp);
     }
     $("runHrNote").textContent = "Beats per minute through the session. The green band is easy aerobic work.";
-    const body = $("runRows"); body.replaceChildren();
-    for (const x of list) {
-      const tr = make("tr"); tr.style.cursor = "pointer"; tr.onclick = () => { runSel = x.id; renderRuns(); scrollTo({ top: 0, behavior: "smooth" }); };
-      tr.append(make("td", null, `${runDate(x.date)} · ${x.id.slice(11)}`), make("td", null, trackName(x)));
-      for (const v of [fmtDuration(x.activeSeconds || x.seconds), `${fmt2.format(x.km ?? x.gpsKm)} km`, x.paceS ? `${mmss(x.paceS)} /km` : "—",
-        x.cadence ? `${x.cadence} spm` : "—", x.avgHr != null ? `${x.avgHr} bpm` : "—", x.maxHr != null ? `${x.maxHr} bpm` : "—",
-        x.avgHr != null ? `${Math.round((x.hrBands?.hard || 0) / 60)} min` : "—", `${fmtInt.format(x.climbM)} m`]) tr.append(make("td", "num", v));
-      body.append(tr);
-    }
   }
-  function drawRouteMap(box, r) {
+  // map tiles from CARTO (OpenStreetMap data) under the route; routes without a start point fall back to a plain trace
+  function drawMap(box, r, o = {}) {
+    if (!r.origin) return drawRouteMap(box, r, o);
+    box.replaceChildren(); box.classList.add("map");
+    const W = Math.max(120, box.clientWidth), H = o.detail ? Math.min(420, Math.max(260, W * 0.7)) : Math.max(120, box.clientHeight || W);
+    if (o.detail) box.style.height = H + "px";
+    const [lat0, lon0] = r.origin, kx = 111320 * Math.cos((lat0 * Math.PI) / 180);
+    const ll = (p) => [lat0 + p[1] / 110540, lon0 + p[0] / kx];
+    const world = (lat, lon, z) => { const n = 256 * 2 ** z, s = Math.sin((lat * Math.PI) / 180);
+      return [((lon + 180) / 360) * n, (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n]; };
+    const pts = r.track.filter((p) => p && p[0] != null), geo = pts.map(ll);
+    const padd = o.detail ? 28 : Math.round(W * 0.08);
+    let z = 18, minX, maxX, minY, maxY;
+    for (; z > 3; z--) {
+      const w = geo.map(([a, b]) => world(a, b, z));
+      minX = Math.min(...w.map((q) => q[0])); maxX = Math.max(...w.map((q) => q[0])); minY = Math.min(...w.map((q) => q[1])); maxY = Math.max(...w.map((q) => q[1]));
+      const fitH = o.detail ? H - 2 * padd : H - (o.reserve || H * 0.6) - padd * 1.5;   // keep the route above a thumbnail's text
+      if (maxX - minX <= W - 2 * padd && maxY - minY <= fitH) break;
+    }
+    // the card's bottom half carries text, so lift the route into the top part of a thumbnail
+    // centre the route in the space above the text block
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2 + (o.detail ? 0 : H / 2 - (H - (o.reserve || H * 0.6)) / 2 - padd * 0.25);
+    const left = cx - W / 2, top = cy - H / 2;
+    const dark = !o.brand && document.documentElement.dataset.theme === "dark" || (!o.brand && !document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
+    for (let tx = Math.floor(left / 256); tx <= Math.floor((left + W) / 256); tx++)
+      for (let ty = Math.floor(top / 256); ty <= Math.floor((top + H) / 256); ty++) {
+        const img = document.createElement("img");
+        img.alt = ""; img.loading = "lazy"; img.decoding = "async"; img.referrerPolicy = "no-referrer";
+        img.src = `https://${"abcd"[Math.abs(tx + ty) % 4]}.basemaps.cartocdn.com/${dark ? "dark_all" : "light_all"}/${z}/${tx}/${ty}@2x.png`;
+        img.style.left = tx * 256 - left + "px"; img.style.top = ty * 256 - top + "px";
+        box.append(img);
+      }
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, "aria-hidden": "true" }, box);
+    const P = (p) => { const [a, b] = ll(p), w = world(a, b, z); return [w[0] - left, w[1] - top]; };
+    const brand = "#fc4c02";
+    let prev = null, last = null;
+    for (const p of r.track) {
+      if (p === null) { prev = null; continue; }
+      if (p[0] == null) continue;
+      const [x2, y2] = P(p);
+      if (prev) {
+        const [x1, y1] = P(prev);
+        const color = o.brand ? brand : (prev[3] ?? p[3]) != null ? css(hrBand(prev[3] ?? p[3]).color) : css("--axis");
+        el("line", { x1, y1, x2, y2, stroke: color, "stroke-width": o.brand ? 3 : 4, "stroke-linecap": "round" }, svg);
+      } else if (last) {
+        const [x1, y1] = P(last);
+        el("line", { x1, y1, x2, y2, stroke: o.brand ? brand : css("--axis"), "stroke-width": 1.5, "stroke-dasharray": "3 4", opacity: 0.8 }, svg);
+      }
+      prev = p; last = p;
+    }
+    if (o.detail) {
+      const [sx, sy] = P(pts[0]), [ex, ey] = P(pts.at(-1));
+      el("circle", { cx: sx, cy: sy, r: 7, fill: css("--st-good"), stroke: "#fff", "stroke-width": 2 }, svg);
+      el("circle", { cx: ex, cy: ey, r: 7, fill: "#111", stroke: "#fff", "stroke-width": 2 }, svg);
+    }
+    const a = make("div", "attr"); a.textContent = "© OpenStreetMap © CARTO"; box.append(a);
+  }
+  function drawRouteMap(box, r, o = {}) {
     box.replaceChildren();
     const pts = r.track.filter((p) => p && p[0] != null);
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);

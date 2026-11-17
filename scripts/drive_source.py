@@ -200,6 +200,8 @@ def collect_routes(token, folders, routes: dict) -> int:
 
     def keep(route):
         nonlocal added
+        if not route_lib.is_run(route):   # runs and jogs only, no walks
+            return
         old = items.get(route["id"])
         if route_lib.better(route, old):
             items[route["id"]] = route

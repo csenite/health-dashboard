@@ -219,7 +219,8 @@ def build(pts, kind, tz, source, total_m=None, active_s=None) -> dict | None:
         "hrBands": {k: round(v) for k, v in bands.items()},
         "climbM": round(gain),
         "splits": splits,
-        "near": [round(lat0, 3), round(lon0, 3)],   # about 100 m precision, only used to group routes by place
+        "near": [round(lat0, 3), round(lon0, 3)],   # about 100 m precision, used to group routes by place
+        "origin": [round(lat0, 5), round(lon0, 5)],  # start point, to place the route on the map
         "track": track,
     }
 
@@ -248,6 +249,15 @@ def parse_takeout(data: bytes, tz: ZoneInfo, pattern=RUNS) -> list:
                 r["type"] = "RUNNING" if kinds == "running" else "WALK_RUN"
                 out.append(r)
     return out
+
+
+def is_run(route: dict) -> bool:
+    """Runs and jogs only. Google Fit walk/run sessions count when the average pace shows real jogging
+    (12:00/km or faster); otherwise they were mostly walks."""
+    t = route.get("type", "")
+    if re.search(r"RUN|JOG|TREADMILL", t) and t != "WALK_RUN":
+        return True
+    return t == "WALK_RUN" and bool(route.get("paceS")) and route["paceS"] <= 720
 
 
 RANK = {"tcx-samsung": 3, "tcx": 2, "google-fit": 2, "gpx": 1}
