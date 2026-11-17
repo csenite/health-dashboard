@@ -258,7 +258,7 @@
     </div>
     <div class="head-right">
     <!-- Version: a very big update adds 0.1, a minor update adds 0.0.1 -->
-    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019 · 1.4.0 Runs tab with GPS routes, track names and heart rate · 1.4.1 Google Fit run history, pace, cadence, 1 km laps and VO₂ max on the Runs tab · 1.5.0 Runs gallery with map thumbnails, runs and jogs only, Track_001 names · 1.5.1 OpenStreetMap maps · 1.5.2 grey maps, blue trail where heart rate or pace is missing · 1.5.3 softer map contrast">v1.5.3 · 17 Nov 2026</div>
+    <div class="ver" title="1.0.0 launch (9 Nov) · 1.1.0 zones, calories and redesign · 1.1.1 hand-entered weigh-ins · 1.2.0 lean-mass zones and FFMI/BMI tabs · 1.3.0 weekly summary and new charts · 1.3.1 summary turns over Mondays 7 am · 1.3.2 mobile layout, 3 charts a row on desktop, tap to enlarge · 1.3.3 Huawei weight and body fat history back to 2019 · 1.4.0 Runs tab with GPS routes, track names and heart rate · 1.4.1 Google Fit run history, pace, cadence, 1 km laps and VO₂ max on the Runs tab · 1.5.0 Runs gallery with map thumbnails, runs and jogs only, Track_001 names · 1.5.1 OpenStreetMap maps · 1.5.2 grey maps, blue trail where heart rate or pace is missing · 1.5.3 softer map contrast · 1.5.4 detail map matches thumbnails, blue thumbnail trails">v1.5.4 · 17 Nov 2026</div>
     <div class="controls">
       <div class="seg" id="theme" role="group" aria-label="Theme">
         <button data-theme-set="light">Light</button>
@@ -1453,7 +1453,7 @@
     // centre the route in the space above the text block
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2 + (o.detail ? 0 : H / 2 - (H - (o.reserve || H * 0.6)) / 2 - padd * 0.25);
     const left = cx - W / 2, top = cy - H / 2;
-    const dark = !o.brand && document.documentElement.dataset.theme === "dark" || (!o.brand && !document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
+    const dark = false;   // same light grey map as the thumbnails, in both themes
     box.classList.toggle("dark", dark);
     for (let tx = Math.floor(left / 256); tx <= Math.floor((left + W) / 256); tx++)
       for (let ty = Math.floor(top / 256); ty <= Math.floor((top + H) / 256); ty++) {
@@ -1465,7 +1465,7 @@
       }
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, "aria-hidden": "true" }, box);
     const P = (p) => { const [a, b] = ll(p), w = world(a, b, z); return [w[0] - left, w[1] - top]; };
-    const brand = "#fc4c02", noData = "#2f7de1";   // blue = sections with no heart rate or pace (GPS gaps)
+    const brand = "#2f7de1", noData = "#2f7de1";   // blue = sections with no heart rate or pace (GPS gaps)
     let prev = null, last = null;
     for (const p of r.track) {
       if (p === null) { prev = null; continue; }
