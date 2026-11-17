@@ -66,10 +66,9 @@ Then delete `github_secrets.txt`.
 
 ## When the Google Health login expires (every 7 days in Testing mode)
 
-The workflow still saves the Health Sync data, then fails on purpose so GitHub emails you. To fix it:
+The workflow still saves the Health Sync data, then fails on purpose so GitHub emails you. To fix it, double-click `tools/renew_login.bat` and click Allow in the browser. It updates the `GOOGLE_REFRESH_TOKEN` secret on GitHub and refreshes the dashboard for you (the first time it also installs the GitHub CLI and asks you to sign in to GitHub once). If a service account key file sits next to your client secret, it saves that as `GOOGLE_SERVICE_ACCOUNT_JSON` too.
 
-1. Run `tools/login.bat`.
-2. Paste the new `GOOGLE_REFRESH_TOKEN` into the GitHub secret of the same name.
+The manual way still works: run `tools/login.bat` and paste the new `GOOGLE_REFRESH_TOKEN` into the GitHub secret of the same name.
 
 Until you do, the page shows a note, and only the figures Health Sync provides keep updating.
 
