@@ -13,7 +13,7 @@ If the Google Health login lapses, the figures Health Sync also has keep updatin
 
 How it runs:
 
-- **GitHub Actions** fetches both sources every 3 hours.
+- **GitHub Actions** fetches both sources every hour.
 - The data is **encrypted with your password** before it's saved.
 - **GitHub Pages** hosts the page.
 
@@ -22,7 +22,7 @@ index.html                         the dashboard (one file, no libraries)
 scripts/fetch_health.py            Google Health API + combines everything + encrypts
 scripts/drive_source.py            reads the Health Sync CSVs (and workout .gpx routes) from Drive
 scripts/routes.py                  turns a .gpx file into a compact route with heart rate
-.github/workflows/update-data.yml  runs it every 3 hours
+.github/workflows/update-data.yml  runs it every hour
 tools/login.bat                    Google Health sign-in on your PC; prints the GitHub secrets
 tools/preview.bat                  preview with your real data on your PC before uploading
 ```

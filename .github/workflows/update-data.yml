@@ -2,7 +2,7 @@ name: Update health data
 
 on:
   schedule:
-    - cron: "23 */3 * * *"   # every 3 hours
+    - cron: "23 * * * *"   # every hour
   workflow_dispatch:          # "Run workflow" button on the Actions tab
     inputs:
       full:
