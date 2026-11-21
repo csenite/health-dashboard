@@ -53,5 +53,5 @@ jobs:
             echo "No data changes."
           else
             git commit -m "Update health data"
-            git push
+            for i in 1 2 3; do git pull --rebase -q && git push && break; sleep 5; done
           fi
