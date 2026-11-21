@@ -995,8 +995,8 @@
   }
 
   const CHARTS = [
-    { id: "weight", title: "Weight", desc: "Kilograms, morning reading. Zones use body fat at your current lean mass, not BMI", key: "weight", unit: "kg", digits: 1, color: "--s1" },
-    { id: "wtrend", title: "Weight trend", desc: "7-day average of your morning weigh-ins, which smooths out daily swings", key: "weight7", zkey: "weight", unit: "kg", digits: 1, color: "--s1" },
+    { id: "weight", title: "Weight", desc: "Kilograms, latest weigh-in of the day. Zones use body fat at your current lean mass, not BMI", key: "weight", unit: "kg", digits: 1, color: "--s1" },
+    { id: "wtrend", title: "Weight trend", desc: "7-day average of your daily weigh-ins, which smooths out daily swings", key: "weight7", zkey: "weight", unit: "kg", digits: 1, color: "--s1" },
     { id: "comp", title: "Lean vs fat mass", desc: "Your weight split into lean mass and fat mass, from your scale", key: "compTotal", unit: "kg", digits: 1, color: "--s1", bars: true, stack: [["leanKg", "Lean mass", "--s1"], ["fatKg", "Fat mass", "--s7"]] },
     { id: "sleep", title: "Total sleep", desc: "Hours asleep, by the day you woke up", key: "sleepH", unit: "h", digits: 1, color: "--s1" },
     { id: "stages", title: "Sleep stages", desc: "Your last 7 recorded nights", custom: true },

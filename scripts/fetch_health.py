@@ -247,8 +247,8 @@ def source_rank(point: dict) -> int:
     return {SAMSUNG_APP: 2, "com.google.android.apps.fitness": 1}.get(app, 0)
 
 
-def morning_readings(points: list, key: str, value) -> dict:
-    """{day: value} using each day's first reading from 4 am, else its earliest."""
+def latest_readings(points: list, key: str, value) -> dict:
+    """{day: value} using each day's latest reading (the user asked for the last weigh-in to count)."""
     best = {}
     for p in points:
         rec = p.get(key) or {}
@@ -259,8 +259,8 @@ def morning_readings(points: list, key: str, value) -> dict:
             continue
         day = f"{d['year']:04d}-{d['month']:02d}-{d['day']:02d}"
         clock = (t.get("hours", 0), t.get("minutes", 0), t.get("seconds", 0))
-        rank = (clock[0] < 4, clock)
-        if day not in best or rank < best[day][0]:
+        rank = clock
+        if day not in best or rank >= best[day][0]:
             best[day] = (rank, v)
     return {day: v for day, (_, v) in best.items()}
 
@@ -330,7 +330,7 @@ def fetch_history(token: str, days: dict, workouts: list, errors: dict):
         return grams / 1000 if grams else None
 
     def per_day(data_type, key, field, value):
-        for day, v in morning_readings(list_points(token, data_type), key, value).items():
+        for day, v in latest_readings(list_points(token, data_type), key, value).items():
             days.setdefault(day, {})[field] = v
 
     def weight():

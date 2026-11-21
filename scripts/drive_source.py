@@ -119,8 +119,7 @@ def collect(days: dict, workouts: list, since: str | None = None, routes: dict |
                 days.setdefault(d, {})["hs-rhr"] = {"bpm": v}
                 counts["rhr"] = counts.get("rhr", 0) + 1
 
-    # Weight + body composition: first morning weigh-in of each day (from 4 am), which is the
-    # steadiest reading to compare. Days with only a late-night reading keep that one.
+    # Weight + body composition: the latest weigh-in of each day (the user's choice).
     last = {}
     for f in _files(token, folders, "Health Sync Weight", since):
         for r in _csv(token, f["id"]):
@@ -129,7 +128,7 @@ def collect(days: dict, workouts: list, since: str | None = None, routes: dict |
                 last[stamp] = r
     by_day = {}
     # Preferred reading goes last so it wins. 0.0 means "not measured", so those keep another reading's value.
-    for stamp in sorted(sorted(last, reverse=True), key=lambda s: s[11:13] >= "04"):
+    for stamp in sorted(last):
         d, r = _day(stamp), last[stamp]
         if not d:
             continue
